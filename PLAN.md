@@ -25,10 +25,10 @@ Legendă: ⬜ neînceput · 🟨 în lucru · ✅ gata · ⛔ blocat · ❓ așt
 | 6 | Anti-roboți și limitare de rată | ✅ | |
 | 7 | Politica implicită de acces + paznic de politică | ✅ | |
 | 8 | Aprobare, verificare e-mail, notificări | ✅ | SMTP/Telegram netestate fără date reale |
-| 9 | Actualizare din GitHub | 🟨 | Release fără token funcționează (v0.9.0 pre-release); instalarea din panou de testat pe server |
+| 9 | Actualizare din GitHub | ✅ | 0.9.0 → 1.0.0 instalat prin updater (semnătură verificată, backup), repornire prin plugin |
 | 10 | Dezinstalare curată + export/ștergere date (GDPR) | ✅ | |
 | 11 | Teste (unitare + UI headless) | ✅ | 81 unitare; `reg-ui.js` (pagina publică), `reg-e2e.js` (35 verificări pe Emby real), `reg-admin.js` (panou) |
-| 12 | Documentație (README RO/EN), prima versiune `v1.0.0` | 🟨 | README gata; release după repo |
+| 12 | Documentație (README RO/EN), prima versiune `v1.0.0` | ✅ | v1.0.0 publicat |
 | 13 | Deploy pe poweredge | ✅ | Instalat 2026-09-25; înregistrarea rămâne închisă până o deschide adminul |
 
 Jurnal de progres (se completează pe parcurs):
@@ -40,6 +40,7 @@ Jurnal de progres (se completează pe parcurs):
 | 2026-09-25 | inițial | Implementare completă etapele 2–10, teste unitare și UI public |
 | 2026-09-25 | 100c699 | Publicat pe GitHub (public) |
 | 2026-09-25 | v0.9.0 | Primul release (pre-release), publicat de GitHub Actions, semnătură verificată |
+| 2026-09-25 | v1.0.0 | Release 1.0.0, instalat pe server prin actualizarea din plugin |
 | 2026-09-25 | — | Deploy pe server; corectat: configurația nu se poate salva în constructorul plugin-ului; test e2e complet trecut |
 
 ### Descoperiri din spike (Emby 4.9.5)
