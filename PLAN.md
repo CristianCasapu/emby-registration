@@ -25,7 +25,7 @@ Legendă: ⬜ neînceput · 🟨 în lucru · ✅ gata · ⛔ blocat · ❓ așt
 | 6 | Anti-roboți și limitare de rată | ✅ | |
 | 7 | Politica implicită de acces + paznic de politică | ✅ | |
 | 8 | Aprobare, verificare e-mail, notificări | ✅ | SMTP/Telegram netestate fără date reale |
-| 9 | Actualizare din GitHub | 🟨 | Release fără token: `tools/release.sh` semnează local, GitHub Actions publică |
+| 9 | Actualizare din GitHub | 🟨 | Release fără token funcționează (v0.9.0 pre-release); instalarea din panou de testat pe server |
 | 10 | Dezinstalare curată + export/ștergere date (GDPR) | ✅ | |
 | 11 | Teste (unitare + UI headless) | 🟨 | 81 teste unitare; UI public pe mock (`~/src/ui-harness/reg-ui.js`); panoul admin de testat după deploy |
 | 12 | Documentație (README RO/EN), prima versiune `v1.0.0` | 🟨 | README gata; release după repo |
@@ -39,6 +39,7 @@ Jurnal de progres (se completează pe parcurs):
 | 2026-09-25 | — | Decizii D1–D8 răspunse și integrate în plan |
 | 2026-09-25 | inițial | Implementare completă etapele 2–10, teste unitare și UI public |
 | 2026-09-25 | 100c699 | Publicat pe GitHub (public) |
+| 2026-09-25 | v0.9.0 | Primul release (pre-release), publicat de GitHub Actions, semnătură verificată |
 
 ### Descoperiri din spike (Emby 4.9.5)
 

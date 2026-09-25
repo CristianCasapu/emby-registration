@@ -63,7 +63,7 @@ tools/release.sh 1.2.3          # teste, build, semnătură, tag; GitHub Actions
 
 Compilarea folosește assembly-urile serverului din `/opt/emby-server/system` când există (pachetul NuGet 4.9.1.90 nu are `IHasWebPages`).
 
-Release-urile se compilează și se semnează local (ECDSA P-256), într-un commit etichetat cu `dist/`; `.github/workflows/release.yml` verifică semnătura și publică fișierele, fără token personal pe server. cheia publică este `Registration/Updates/release-key.pem`, cheia privată nu este în depozit. Un DLL nesemnat cu ea este refuzat de actualizarea automată.
+Release-urile se compilează și se semnează local (ECDSA P-256), într-un commit etichetat cu `dist/`; `.github/workflows/release.yml` verifică semnătura și publică fișierele, fără token personal pe server. Cheia publică este `Registration/Updates/release-key.pem`, cheia privată nu este în depozit. Un DLL nesemnat cu ea este refuzat de actualizarea automată.
 
 ## Licență
 
