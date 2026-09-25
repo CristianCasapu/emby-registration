@@ -58,12 +58,12 @@ sudo rm -rf /var/lib/emby/plugins/Registration /var/lib/emby/plugins/configurati
 ```sh
 dotnet test -c Release          # teste unitare
 tools/deploy.sh [--restart]     # build + copiere în Emby (repornește doar dacă nu se redă nimic)
-tools/release.sh 1.2.3          # teste, build, semnătură, tag, GitHub Release
+tools/release.sh 1.2.3          # teste, build, semnătură, tag; GitHub Actions publică release-ul
 ```
 
 Compilarea folosește assembly-urile serverului din `/opt/emby-server/system` când există (pachetul NuGet 4.9.1.90 nu are `IHasWebPages`).
 
-Release-urile sunt semnate ECDSA P-256; cheia publică este `Registration/Updates/release-key.pem`, cheia privată nu este în depozit. Un DLL nesemnat cu ea este refuzat de actualizarea automată.
+Release-urile se compilează și se semnează local (ECDSA P-256), într-un commit etichetat cu `dist/`; `.github/workflows/release.yml` verifică semnătura și publică fișierele, fără token personal pe server. cheia publică este `Registration/Updates/release-key.pem`, cheia privată nu este în depozit. Un DLL nesemnat cu ea este refuzat de actualizarea automată.
 
 ## Licență
 

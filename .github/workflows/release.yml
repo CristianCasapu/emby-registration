@@ -1,0 +1,32 @@
+# Publica release-ul pentru un tag v*. DLL-ul nu se compileaza aici (are nevoie de
+# assembly-urile serverului Emby): tools/release.sh il compileaza si il semneaza local,
+# apoi il pune in dist/ intr-un commit etichetat. Aici doar se verifica semnatura cu cheia
+# publica din depozit si se publica fisierele.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verifica semnatura
+        run: |
+          openssl dgst -sha256 -verify Registration/Updates/release-key.pem -signature dist/Registration.dll.sig dist/Registration.dll
+          (cd dist && sha256sum -c SHA256SUMS)
+
+      - name: Publica release-ul
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=()
+          [ -f dist/PRERELEASE ] && flags+=(--prerelease)
+          gh release create "$GITHUB_REF_NAME" dist/Registration.dll dist/Registration.dll.sig dist/SHA256SUMS \
+            --title "$GITHUB_REF_NAME" --notes-file dist/NOTES.md "${flags[@]}"

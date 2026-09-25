@@ -25,7 +25,7 @@ Legendă: ⬜ neînceput · 🟨 în lucru · ✅ gata · ⛔ blocat · ❓ așt
 | 6 | Anti-roboți și limitare de rată | ✅ | |
 | 7 | Politica implicită de acces + paznic de politică | ✅ | |
 | 8 | Aprobare, verificare e-mail, notificări | ✅ | SMTP/Telegram netestate fără date reale |
-| 9 | Actualizare din GitHub | 🟨 | Cod + `tools/release.sh` gata; necesită repo + token |
+| 9 | Actualizare din GitHub | 🟨 | Release fără token: `tools/release.sh` semnează local, GitHub Actions publică |
 | 10 | Dezinstalare curată + export/ștergere date (GDPR) | ✅ | |
 | 11 | Teste (unitare + UI headless) | 🟨 | 81 teste unitare; UI public pe mock (`~/src/ui-harness/reg-ui.js`); panoul admin de testat după deploy |
 | 12 | Documentație (README RO/EN), prima versiune `v1.0.0` | 🟨 | README gata; release după repo |
