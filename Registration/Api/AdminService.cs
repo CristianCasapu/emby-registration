@@ -174,6 +174,74 @@ public sealed class PurgeData : IReturn<ActionResult>
     public string Confirm { get; set; } = string.Empty;
 }
 
+[Route("/Registration/Admin/Users", "GET", Summary = "Utilizatorii carora li se pot trimite datele de acces (fara administratori)")]
+[Authenticated(Roles = "admin")]
+public sealed class GetAccessUsers : IReturn<List<AccessUser>>
+{
+}
+
+[Route("/Registration/Admin/AccessInfo", "POST", Summary = "Pregateste datele de acces; optional seteaza o parola noua")]
+[Authenticated(Roles = "admin")]
+public sealed class PrepareAccessInfo : IReturn<AccessInfo>
+{
+    public string UserId { get; set; } = string.Empty;
+
+    /// <summary>keep (fara parola in mesaj), generate (parola noua aleatoare) sau set (parola data).</summary>
+    public string PasswordMode { get; set; } = "keep";
+
+    public string? Password { get; set; }
+}
+
+[Route("/Registration/Admin/SendAccessEmail", "POST", Summary = "Trimite datele de acces pe e-mail, prin SMTP-ul plugin-ului")]
+[Authenticated(Roles = "admin")]
+public sealed class SendAccessEmail : IReturn<ActionResult>
+{
+    public string To { get; set; } = string.Empty;
+
+    public string Subject { get; set; } = string.Empty;
+
+    public string Text { get; set; } = string.Empty;
+}
+
+public sealed class AccessUser
+{
+    public string Id { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+
+    public bool Disabled { get; set; }
+
+    public bool FromRegistration { get; set; }
+
+    public string? FirstName { get; set; }
+
+    public string? LastName { get; set; }
+
+    public string? Email { get; set; }
+
+    public string? Phone { get; set; }
+
+    public string? Language { get; set; }
+}
+
+public sealed class AccessInfo
+{
+    public bool Ok { get; set; } = true;
+
+    public string? Error { get; set; }
+
+    public string Username { get; set; } = string.Empty;
+
+    /// <summary>Doar cand a fost setata acum; nu se pastreaza nicaieri.</summary>
+    public string? Password { get; set; }
+
+    public string? PublicUrl { get; set; }
+
+    public string ServerName { get; set; } = string.Empty;
+
+    public bool Disabled { get; set; }
+}
+
 public sealed class RequestList
 {
     public List<RequestView> Waiting { get; set; } = new();
@@ -516,6 +584,104 @@ public sealed class AdminService : IService, IRequiresRequest
             _appHost.Restart();
         });
         return new ActionResult();
+    }
+
+    public object Get(GetAccessUsers request)
+    {
+        var records = Manager.Store.Read(d => d.Requests.Where(r => r.Status == RequestStatus.Approved).Select(Clone).ToList());
+        return _userManager.Users
+            .Select(u => (User: u, Policy: _userManager.GetUserPolicy(u)))
+            .Where(x => !x.Policy.IsAdministrator)
+            .Select(x =>
+            {
+                var id = x.User.Id.ToString("N");
+                var r = records.FirstOrDefault(r => r.UserId == id);
+                return new AccessUser
+                {
+                    Id = id,
+                    Name = x.User.Name,
+                    Disabled = x.Policy.IsDisabled,
+                    FromRegistration = r != null,
+                    FirstName = r?.FirstName,
+                    LastName = r?.LastName,
+                    Email = r?.Email,
+                    Phone = r?.Phone,
+                    Language = r?.Language,
+                };
+            })
+            .OrderBy(u => u.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    public async Task<object> Post(PrepareAccessInfo request)
+    {
+        var user = Guid.TryParse(request.UserId, out var id) ? _userManager.GetUserById(id) : null;
+        if (user == null)
+        {
+            return new AccessInfo { Ok = false, Error = "user_missing" };
+        }
+
+        var policy = _userManager.GetUserPolicy(user);
+        if (policy.IsAdministrator)
+        {
+            // Parola unui administrator nu se schimba si nu se trimite din acest ecran.
+            return new AccessInfo { Ok = false, Error = "admin_user" };
+        }
+
+        string? password = null;
+        switch (request.PasswordMode)
+        {
+            case "generate":
+                password = GeneratePassword();
+                break;
+            case "set":
+                password = request.Password ?? string.Empty;
+                if (password.Length < 8 || password.Length > 128)
+                {
+                    return new AccessInfo { Ok = false, Error = "password_short" };
+                }
+
+                break;
+        }
+
+        if (password != null)
+        {
+            await _userManager.ChangePassword(user, password).ConfigureAwait(false);
+            Manager.Notifier.Notify("Access", $"Înregistrare: parolă nouă pentru {user.Name}", $"Setată de {Admin} pentru trimiterea datelor de acces.");
+        }
+
+        var settings = RegistrationManager.Settings;
+        return new AccessInfo
+        {
+            Username = user.Name,
+            Password = password,
+            PublicUrl = string.IsNullOrWhiteSpace(settings.PublicUrl) ? null : settings.PublicUrl.Trim().TrimEnd('/'),
+            ServerName = Manager.ServerName(Manager.DefaultServerName),
+            Disabled = policy.IsDisabled,
+        };
+    }
+
+    /// <summary>Parola usor de scris pe un televizor: 3 grupuri de 4, fara caractere care se confunda (0/O, 1/l/I).</summary>
+    internal static string GeneratePassword()
+    {
+        const string alphabet = "abcdefghjkmnpqrstuvwxyz23456789";
+        return string.Join('-', Enumerable.Range(0, 3).Select(_ =>
+            new string(Enumerable.Range(0, 4).Select(_ => alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)]).ToArray())));
+    }
+
+    public async Task<object> Post(SendAccessEmail request)
+    {
+        try
+        {
+            var to = request.To.Trim();
+            _ = new System.Net.Mail.MailAddress(to);
+            await Mailer.SendAsync(RegistrationManager.Settings, new[] { to }, request.Subject, request.Text, Request.CancellationToken).ConfigureAwait(false);
+            return new ActionResult();
+        }
+        catch (Exception ex)
+        {
+            return new ActionResult { Ok = false, Error = ex.GetBaseException().Message };
+        }
     }
 
     public object Post(PurgeData request)

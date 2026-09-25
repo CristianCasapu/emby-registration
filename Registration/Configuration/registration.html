@@ -98,6 +98,7 @@
                 <button type="button" class="rg-tab" role="tab" data-tab="antibot"><span class="md-icon">shield</span>Anti-roboți</button>
                 <button type="button" class="rg-tab" role="tab" data-tab="notify"><span class="md-icon">notifications</span>Notificări</button>
                 <button type="button" class="rg-tab" role="tab" data-tab="invites"><span class="md-icon">confirmation_number</span>Invitații</button>
+                <button type="button" class="rg-tab" role="tab" data-tab="share"><span class="md-icon">share</span>Trimite acces</button>
                 <button type="button" class="rg-tab" role="tab" data-tab="updates"><span class="md-icon">system_update</span>Actualizări <span class="rg-count updateCount" hidden>1</span></button>
                 <button type="button" class="rg-tab" role="tab" data-tab="maintenance"><span class="md-icon">build</span>Întreținere</button>
             </div>
@@ -249,6 +250,54 @@
                     <button type="submit" class="rg-btn rg-btn-primary"><span class="md-icon">save</span>Salvează</button>
                 </div>
             </form>
+
+            <!-- Trimite datele de acces -->
+            <div class="rg-panel" data-panel="share" hidden>
+                <div class="rg-columns">
+                    <div class="rg-card">
+                        <h3><span class="md-icon">person</span>Pentru cine</h3>
+                        <div class="rg-field"><label>Utilizator</label><select class="rg-select selShareUser"></select></div>
+                        <div class="rg-help shareUserInfo"></div>
+                        <div class="rg-field"><label>Limba mesajului</label>
+                            <select class="rg-select selShareLang"><option value="ro">Română</option><option value="en">English</option></select>
+                        </div>
+                    </div>
+                    <div class="rg-card">
+                        <h3><span class="md-icon">password</span>Parola din mesaj</h3>
+                        <div class="rg-card-desc">Plugin-ul nu păstrează parolele: parola aleasă de utilizator nu poate fi trimisă. Poți pune o parolă nouă, care se setează imediat în Emby (cea veche nu mai merge).</div>
+                        <label class="rg-switch"><input type="radio" name="sharePw" value="keep" checked><span><b>Fără parolă</b><span class="rg-help">Utilizatorul își știe parola (a ales-o la înregistrare).</span></span></label>
+                        <label class="rg-switch"><input type="radio" name="sharePw" value="generate"><span><b>Generează o parolă nouă</b><span class="rg-help">12 caractere ușor de scris și pe televizor, ex. <span class="rg-mono">k7mp-x2qa-9fhe</span>.</span></span></label>
+                        <label class="rg-switch"><input type="radio" name="sharePw" value="set"><span><b>Scriu eu parola nouă</b><span class="rg-help">Cel puțin 8 caractere.</span></span></label>
+                        <input class="rg-input txtSharePassword" type="text" autocomplete="off" placeholder="parola nouă" hidden>
+                        <div class="rg-toolbar" style="margin-top:.8em">
+                            <button type="button" class="rg-btn rg-btn-primary btnPrepareShare"><span class="md-icon">edit_note</span>Pregătește mesajul</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="rg-card shareResult" hidden>
+                    <h3><span class="md-icon">send</span>Mesaj</h3>
+                    <div class="rg-warning shareWarning"></div>
+                    <textarea class="rg-textarea rg-mono txtShareText" rows="12" style="margin-top:.7em"></textarea>
+                    <div class="rg-toolbar" style="margin-top:.7em">
+                        <button type="button" class="rg-btn rg-btn-primary" data-share="copy"><span class="md-icon">content_copy</span>Copiază textul</button>
+                        <button type="button" class="rg-btn" data-share="native" hidden><span class="md-icon">ios_share</span>Partajează… (Messenger, Signal…)</button>
+                        <button type="button" class="rg-btn" data-share="whatsapp"><span class="md-icon">chat</span>WhatsApp</button>
+                        <button type="button" class="rg-btn" data-share="telegram"><span class="md-icon">send</span>Telegram</button>
+                        <button type="button" class="rg-btn" data-share="sms"><span class="md-icon">sms</span>SMS</button>
+                        <button type="button" class="rg-btn" data-share="mailto"><span class="md-icon">mail</span>E-mail (aplicația ta)</button>
+                    </div>
+                    <div class="rg-fields" style="margin-top:.4em">
+                        <div class="rg-field"><label>Trimite de pe server (SMTP) către</label>
+                            <div class="rg-toolbar" style="margin:0"><input class="rg-input rg-search txtShareEmail" type="email" placeholder="adresa@exemplu.ro">
+                            <button type="button" class="rg-btn" data-share="smtp"><span class="md-icon">outgoing_mail</span>Trimite</button></div>
+                        </div>
+                        <div class="rg-field"><label>Telefon pentru WhatsApp / SMS</label>
+                            <input class="rg-input txtSharePhone" type="tel" placeholder="+40712345678">
+                            <div class="rg-help">Gol: WhatsApp te lasă să alegi conversația.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Invitatii -->
             <div class="rg-panel" data-panel="invites" hidden>

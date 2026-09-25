@@ -539,6 +539,7 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
                         '<td>' + statusBadge(r.Status) + detail + '</td>' +
                         '<td><div class="rg-actions-cell">' +
                         (r.Status === 'Approved' && v.UserExists ? '<button type="button" class="rg-btn rg-btn-small" data-action="managed" title="' + (r.Managed ? 'Scoate contul de sub paznicul de politică (îi poți da drepturi în plus din Emby)' : 'Pune contul înapoi sub paznicul de politică') + '"><span class="md-icon">' + (r.Managed ? 'lock_open' : 'lock') + '</span>' + (r.Managed ? 'Eliberează' : 'Gestionează') + '</button>' : '') +
+                        (r.Status === 'Approved' && v.UserExists ? '<button type="button" class="rg-btn rg-btn-small" data-action="share" title="Trimite datele de acces"><span class="md-icon">share</span></button>' : '') +
                         '<button type="button" class="rg-btn rg-btn-small" data-action="export" title="Exportă datele (JSON)"><span class="md-icon">download</span></button>' +
                         '<button type="button" class="rg-btn rg-btn-small rg-btn-danger" data-action="delete" title="Șterge cererea"><span class="md-icon">delete</span></button>' +
                         '</div></td></tr>';
@@ -632,6 +633,9 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
                 toast(record.Managed ? 'Contul ' + record.Username + ' nu mai e gestionat: îi poți da drepturi în plus din profilul Emby.' : 'Contul ' + record.Username + ' este din nou gestionat.');
                 loadRequests(instance);
             });
+        } else if (action === 'share') {
+            instance.shareUserId = record.UserId;
+            showTab(instance, 'share');
         } else if (action === 'export') {
             download('Registration/Admin/Export', { Id: id }, 'cerere-' + record.Username + '.json', 'application/json');
         } else if (action === 'delete') {
@@ -772,6 +776,183 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
         });
     }
 
+    // --- Trimite datele de acces ----------------------------------------------------------------
+
+    var SHARE_TEXT = {
+        ro: {
+            title: 'Datele tale de acces Emby ({server})',
+            address: 'Adresă server', port: 'Port', user: 'Utilizator', password: 'Parolă',
+            chosen: 'cea aleasă la înregistrare',
+            browser: 'În browser', apps: 'În aplicațiile Emby (telefon, tabletă, TV): „Adaugă server”, apoi adresa și portul de mai sus.',
+            hidden: 'Contul nu apare în lista de pe ecranul de conectare: scrie numele de utilizator.',
+            change: 'Poți schimba parola din Setări → Profil după prima conectare.',
+            download: 'Aplicații', subject: 'Datele tale de acces Emby'
+        },
+        en: {
+            title: 'Your Emby sign-in details ({server})',
+            address: 'Server address', port: 'Port', user: 'Username', password: 'Password',
+            chosen: 'the one you chose when registering',
+            browser: 'In a browser', apps: 'In the Emby apps (phone, tablet, TV): "Add server", then the address and port above.',
+            hidden: 'The account is not listed on the sign-in screen: type your username.',
+            change: 'You can change the password in Settings → Profile after signing in.',
+            download: 'Apps', subject: 'Your Emby sign-in details'
+        }
+    };
+
+    function loadShareUsers(instance) {
+        return api('GET', 'Registration/Admin/Users').then(function (users) {
+            instance.shareUsers = users;
+            var select = instance.view.querySelector('.selShareUser');
+            var current = instance.shareUserId || select.value;
+            select.innerHTML = users.map(function (u) {
+                var label = u.Name + (u.FirstName ? ' — ' + (u.FirstName + ' ' + (u.LastName || '')).trim() : '') + (u.Disabled ? ' (dezactivat)' : '');
+                return '<option value="' + escapeHtml(u.Id) + '">' + escapeHtml(label) + '</option>';
+            }).join('');
+            if (current && users.some(function (u) { return u.Id === current; })) { select.value = current; }
+            instance.shareUserId = null;
+            onShareUserChange(instance);
+        });
+    }
+
+    function shareUser(instance) {
+        var id = instance.view.querySelector('.selShareUser').value;
+        return (instance.shareUsers || []).filter(function (u) { return u.Id === id; })[0];
+    }
+
+    function onShareUserChange(instance) {
+        var view = instance.view;
+        var u = shareUser(instance);
+        view.querySelector('.shareResult').hidden = true;
+        if (!u) {
+            view.querySelector('.shareUserInfo').textContent = 'Nu există utilizatori (administratorii nu apar aici).';
+            return;
+        }
+        var parts = [];
+        if (u.FirstName) { parts.push((u.FirstName + ' ' + (u.LastName || '')).trim()); }
+        if (u.Email) { parts.push(u.Email); }
+        if (u.Phone) { parts.push(u.Phone); }
+        if (!u.FromRegistration) { parts.push('cont creat în afara plugin-ului'); }
+        if (u.Disabled) { parts.push('ATENȚIE: contul este dezactivat'); }
+        view.querySelector('.shareUserInfo').textContent = parts.join(' · ');
+        view.querySelector('.selShareLang').value = u.Language === 'en' ? 'en' : 'ro';
+        view.querySelector('.txtShareEmail').value = u.Email || '';
+        view.querySelector('.txtSharePhone').value = u.Phone || '';
+        // Pentru un cont facut manual, utilizatorul nu are neaparat o parola aleasa de el.
+        view.querySelector('input[name=sharePw][value=' + (u.FromRegistration ? 'keep' : 'generate') + ']').checked = true;
+        view.querySelector('.txtSharePassword').hidden = true;
+    }
+
+    function buildShareText(info, lang) {
+        var t = SHARE_TEXT[lang] || SHARE_TEXT.ro;
+        var base = info.PublicUrl || ApiClient.serverAddress().replace(/\/emby\/?$/, '');
+        var url;
+        try { url = new URL(base); } catch (e) { url = new URL(location.origin); }
+        var port = url.port || (url.protocol === 'https:' ? '443' : '80');
+        var origin = url.protocol + '//' + url.host;
+        var lines = [
+            t.title.replace('{server}', info.ServerName),
+            '',
+            t.address + ': ' + url.protocol + '//' + url.hostname,
+            t.port + ': ' + port,
+            t.user + ': ' + info.Username,
+            t.password + ': ' + (info.Password || t.chosen),
+            '',
+            t.browser + ': ' + origin + '/web/index.html',
+            t.apps,
+            t.hidden
+        ];
+        if (info.Password) { lines.push(t.change); }
+        lines.push('', t.download + ': https://emby.media/download.html');
+        return lines.join('\n');
+    }
+
+    function prepareShare(instance) {
+        var view = instance.view;
+        var u = shareUser(instance);
+        if (!u) { return; }
+        var mode = view.querySelector('input[name=sharePw]:checked').value;
+        var password = view.querySelector('.txtSharePassword').value;
+        if (mode !== 'keep' && !window.confirm('Parola contului „' + u.Name + '” se schimbă acum în Emby; parola veche nu mai funcționează. Continui?')) { return; }
+        loading.show();
+        api('POST', 'Registration/Admin/AccessInfo', { UserId: u.Id, PasswordMode: mode, Password: password }).then(function (info) {
+            if (!info.Ok) {
+                toast({ user_missing: 'Contul nu mai există.', admin_user: 'Datele unui administrator nu se trimit de aici.', password_short: 'Parola trebuie să aibă cel puțin 8 caractere.' }[info.Error] || ('Eroare: ' + info.Error));
+                return;
+            }
+            instance.shareInfo = info;
+            var lang = view.querySelector('.selShareLang').value;
+            view.querySelector('.txtShareText').value = buildShareText(info, lang);
+            var warnings = [];
+            if (info.Password) { warnings.push('Parola apare în clar: oricine vede conversația o poate folosi. Trimite-o doar persoanei potrivite.'); }
+            if (info.Disabled) { warnings.push('Contul este dezactivat: utilizatorul nu se poate conecta până nu îl activezi.'); }
+            if (!info.PublicUrl) { warnings.push('Adresa publică nu e setată (tab-ul General); am folosit adresa din care ai deschis panoul.'); }
+            var box = view.querySelector('.shareWarning');
+            box.hidden = !warnings.length;
+            box.textContent = warnings.join(' ');
+            view.querySelector('[data-share=native]').hidden = !navigator.share;
+            view.querySelector('.shareResult').hidden = false;
+            view.querySelector('.shareResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (info.Password) { toast('Parola nouă a fost setată.'); }
+        }).finally(function () { loading.hide(); });
+    }
+
+    function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        }
+        var area = document.createElement('textarea');
+        area.value = text;
+        area.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+        document.body.appendChild(area);
+        area.select();
+        var ok = document.execCommand('copy');
+        area.remove();
+        return ok ? Promise.resolve() : Promise.reject();
+    }
+
+    function openExternal(url) {
+        var win = window.open(url, '_blank', 'noopener');
+        if (!win) { location.href = url; }
+    }
+
+    function onShare(instance, kind) {
+        var view = instance.view;
+        var text = view.querySelector('.txtShareText').value;
+        var lang = view.querySelector('.selShareLang').value;
+        var subject = (SHARE_TEXT[lang] || SHARE_TEXT.ro).subject;
+        var phone = view.querySelector('.txtSharePhone').value.replace(/[^\d+]/g, '');
+        var enc = encodeURIComponent(text);
+        switch (kind) {
+            case 'copy':
+                copyText(text).then(function () { toast('Textul a fost copiat.'); }, function () { window.prompt('Copiază textul:', text); });
+                break;
+            case 'native':
+                navigator.share({ title: subject, text: text }).catch(function () { /* anulat */ });
+                break;
+            case 'whatsapp':
+                openExternal('https://wa.me/' + phone.replace(/^\+/, '') + '?text=' + enc);
+                break;
+            case 'telegram':
+                openExternal('https://t.me/share/url?url=' + encodeURIComponent('https://emby.media/download.html') + '&text=' + enc);
+                break;
+            case 'sms':
+                openExternal('sms:' + phone + '?&body=' + enc);
+                break;
+            case 'mailto':
+                openExternal('mailto:' + encodeURIComponent(view.querySelector('.txtShareEmail').value.trim()) + '?subject=' + encodeURIComponent(subject) + '&body=' + enc);
+                break;
+            case 'smtp': {
+                var to = view.querySelector('.txtShareEmail').value.trim();
+                if (!to) { toast('Scrie adresa de e-mail.'); return; }
+                loading.show();
+                api('POST', 'Registration/Admin/SendAccessEmail', { To: to, Subject: subject, Text: text }).then(function (r) {
+                    toast(r.Ok ? 'E-mailul a fost trimis la ' + to + '.' : 'Eroare SMTP: ' + r.Error);
+                }).finally(function () { loading.hide(); });
+                break;
+            }
+        }
+    }
+
     // --- Tab-uri -------------------------------------------------------------------------------
 
     function showTab(instance, name) {
@@ -784,6 +965,8 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
             loadRequests(instance);
         } else if (name === 'invites') {
             loadInvites(instance);
+        } else if (name === 'share') {
+            loadShareUsers(instance);
         } else if (name === 'updates') {
             loadUpdate(instance, false);
         } else if (name === 'maintenance') {
@@ -918,6 +1101,23 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
             api('POST', 'Registration/Admin/TestTelegram').then(function (r) {
                 toast(r.Ok ? 'Mesajul de test a fost trimis.' : 'Eroare Telegram: ' + r.Error);
             }).finally(function () { loading.hide(); });
+        });
+
+        view.querySelector('.selShareUser').addEventListener('change', function () { onShareUserChange(instance); });
+        view.querySelector('.selShareLang').addEventListener('change', function () {
+            if (instance.shareInfo && !view.querySelector('.shareResult').hidden) {
+                view.querySelector('.txtShareText').value = buildShareText(instance.shareInfo, view.querySelector('.selShareLang').value);
+            }
+        });
+        view.querySelectorAll('input[name=sharePw]').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                view.querySelector('.txtSharePassword').hidden = radio.value !== 'set' || !radio.checked;
+            });
+        });
+        view.querySelector('.btnPrepareShare').addEventListener('click', function () { prepareShare(instance); });
+        view.querySelector('.shareResult').addEventListener('click', function (e) {
+            var button = e.target.closest('[data-share]');
+            if (button) { onShare(instance, button.getAttribute('data-share')); }
         });
 
         view.querySelector('.btnCreateInvite').addEventListener('click', function () {

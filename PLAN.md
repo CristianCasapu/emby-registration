@@ -29,6 +29,7 @@ Legendă: ⬜ neînceput · 🟨 în lucru · ✅ gata · ⛔ blocat · ❓ așt
 | 10 | Dezinstalare curată + export/ștergere date (GDPR) | ✅ | |
 | 11 | Teste (unitare + UI headless) | ✅ | 81 unitare; `reg-ui.js` (pagina publică), `reg-e2e.js` (35 verificări pe Emby real), `reg-admin.js` (panou) |
 | 12 | Documentație (README RO/EN), prima versiune `v1.0.0` | ✅ | v1.0.0 publicat |
+| 14 | Trimite datele de acces (text, copiere, e-mail, WhatsApp, Telegram, SMS, partajare) | 🟨 | Cerută 2026-09-25; parolă nouă generată/scrisă sau fără parolă |
 | 13 | Deploy pe poweredge | ✅ | Instalat 2026-09-25; înregistrarea rămâne închisă până o deschide adminul |
 
 Jurnal de progres (se completează pe parcurs):
@@ -345,6 +346,14 @@ Compilarea: DLL-urile Emby 4.9.5 nu pot fi puse în repo public (și pachetul Nu
 13. **Deploy** pe poweredge — restart doar după verificarea redărilor active în aceeași comandă.
 
 ---
+
+## 12b. Trimiterea datelor de acces
+
+Tab-ul „Trimite acces” (și butonul de pe fiecare cont aprobat): alegi utilizatorul (oricare, în afară de administratori), limba și parola din mesaj:
+- **fără parolă** — utilizatorul și-o știe (plugin-ul nu păstrează parolele, deci nu o poate trimite);
+- **parolă nouă generată** (`xxxx-xxxx-xxxx`, fără caractere care se confundă) sau **scrisă de admin** — se setează imediat în Emby și apare doar în mesaj.
+
+Mesajul (editabil) conține adresa, portul, utilizatorul, parola, linkul web și instrucțiuni pentru aplicații. Trimitere: copiere, partajare nativă a telefonului (Messenger, Signal etc.), WhatsApp (`wa.me`, cu numărul din cerere), Telegram, SMS, e-mail din aplicația adminului (`mailto:`) sau de pe server prin SMTP. Schimbarea parolei se notează în jurnalul de activitate (fără parolă).
 
 ## 13. Idei pentru mai târziu
 

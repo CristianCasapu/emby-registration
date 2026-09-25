@@ -145,3 +145,14 @@ public class UpdaterTests
         Assert.Equal(256, key.KeySize);
     }
 }
+
+public class AccessShareTests
+{
+    [Fact]
+    public void GeneratedPasswordsAreReadableAndUnique()
+    {
+        var all = Enumerable.Range(0, 200).Select(_ => Registration.Api.AdminService.GeneratePassword()).ToList();
+        Assert.All(all, p => Assert.Matches("^[a-hjkmnp-z2-9]{4}-[a-hjkmnp-z2-9]{4}-[a-hjkmnp-z2-9]{4}$", p));
+        Assert.Equal(all.Count, all.Distinct().Count());
+    }
+}
