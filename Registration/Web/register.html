@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#101010">
+    <title>Cont nou</title>
+    <link rel="stylesheet" href="Assets/register.css">
+    <script src="Assets/register.js" defer></script>
+</head>
+<body>
+<main class="shell">
+    <header class="brand">
+        <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        </div>
+        <div>
+            <h1 id="title" data-t="title">Cont nou</h1>
+            <p class="server" id="serverName"></p>
+        </div>
+        <button type="button" class="lang" id="langToggle" aria-label="Language">EN</button>
+    </header>
+
+    <section class="card" id="loading" aria-busy="true">
+        <div class="spinner" aria-hidden="true"></div>
+        <p data-t="loading">Se încarcă…</p>
+    </section>
+
+    <section class="card hidden" id="closed" aria-live="polite">
+        <h2 data-t="closedTitle">Înregistrarea nu este deschisă</h2>
+        <p id="closedText"></p>
+        <a class="button secondary" id="closedSignIn" href="../../web/index.html" data-t="signIn">Intră în cont</a>
+    </section>
+
+    <form class="card hidden" id="form" novalidate autocomplete="on">
+        <p class="intro" id="intro"></p>
+
+        <div class="field" data-field="username">
+            <label for="username" data-t="username">Nume de utilizator</label>
+            <div class="with-status">
+                <input id="username" name="username" type="text" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="text" maxlength="32">
+                <span class="status" id="usernameStatus" aria-hidden="true"></span>
+            </div>
+            <p class="help" data-t="usernameHelp">Litere mici, cifre și . _ - ; îl vei scrie la fiecare conectare (contul nu apare în lista de pe ecranul de conectare).</p>
+            <p class="error" role="alert"></p>
+        </div>
+
+        <div class="row">
+            <div class="field" data-field="firstName">
+                <label for="firstName" data-t="firstName">Prenume</label>
+                <input id="firstName" name="firstName" type="text" required autocomplete="given-name" maxlength="50">
+                <p class="error" role="alert"></p>
+            </div>
+            <div class="field" data-field="lastName">
+                <label for="lastName" data-t="lastName">Nume</label>
+                <input id="lastName" name="lastName" type="text" required autocomplete="family-name" maxlength="50">
+                <p class="error" role="alert"></p>
+            </div>
+        </div>
+
+        <div class="field" data-field="email">
+            <label for="email" data-t="email">E-mail</label>
+            <input id="email" name="email" type="email" required autocomplete="email" autocapitalize="none" spellcheck="false" inputmode="email" maxlength="254">
+            <p class="suggestion hidden" id="emailSuggestion"><span data-t="didYouMean">Ai vrut să scrii</span> <button type="button" class="link" id="emailSuggestionValue"></button>?</p>
+            <p class="error" role="alert"></p>
+        </div>
+
+        <div class="field" data-field="phone">
+            <label for="phone" data-t="phone">Telefon</label>
+            <div class="phone">
+                <select id="country" name="country" autocomplete="tel-country-code" aria-label="Țara"></select>
+                <input id="phone" name="phone" type="tel" required autocomplete="tel-national" inputmode="tel" maxlength="20">
+            </div>
+            <p class="help" id="phoneHelp"></p>
+            <p class="error" role="alert"></p>
+        </div>
+
+        <div class="field" data-field="password">
+            <label for="password" data-t="password">Parolă</label>
+            <div class="with-toggle">
+                <input id="password" name="password" type="password" required autocomplete="new-password" maxlength="128">
+                <button type="button" class="toggle" data-toggle="password" data-t-label="show">Arată</button>
+            </div>
+            <div class="meter" aria-hidden="true"><span id="meterBar"></span></div>
+            <p class="help" id="passwordHelp"></p>
+            <p class="error" role="alert"></p>
+        </div>
+
+        <div class="field" data-field="password2">
+            <label for="password2" data-t="password2">Confirmă parola</label>
+            <input id="password2" name="password2" type="password" required autocomplete="new-password" maxlength="128">
+            <p class="error" role="alert"></p>
+        </div>
+
+        <div class="field hidden" data-field="pin" id="pinField">
+            <label for="pin"><span data-t="pin">PIN de profil</span> <span class="optional" data-t="optional">(opțional)</span></label>
+            <input id="pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off">
+            <p class="help" data-t="pinHelp">4 cifre. Aplicațiile Emby ți-l cer când revii pe un dispozitiv pe care ești deja conectat, dacă activezi PIN-ul pe acel dispozitiv. Util pe dispozitive folosite de mai multe persoane.</p>
+            <p class="error" role="alert"></p>
+        </div>
+
+        <div class="field hidden" data-field="inviteCode" id="inviteField">
+            <label for="inviteCode" data-t="inviteCode">Cod de invitație</label>
+            <input id="inviteCode" name="inviteCode" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20">
+            <p class="error" role="alert"></p>
+        </div>
+
+        <!-- Capcana pentru roboti: ascunsa pentru oameni si cititoare de ecran. -->
+        <div class="trap" aria-hidden="true">
+            <label for="website">Website</label>
+            <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+        </div>
+
+        <div class="field hidden" data-field="consent" id="consentField">
+            <label class="check">
+                <input id="consent" name="consent" type="checkbox">
+                <span data-t="consent">Sunt de acord ca datele de mai sus să fie păstrate de administratorul serverului pentru gestionarea contului.</span>
+            </label>
+            <details class="privacy hidden" id="privacy">
+                <summary data-t="privacy">Confidențialitate</summary>
+                <p id="privacyText"></p>
+            </details>
+            <p class="error" role="alert"></p>
+        </div>
+
+        <div id="turnstile" class="turnstile"></div>
+
+        <p class="form-error hidden" id="formError" role="alert"></p>
+
+        <button type="submit" class="button" id="submit">
+            <span class="label" data-t="submit">Trimite cererea</span>
+            <span class="busy hidden" aria-hidden="true"></span>
+        </button>
+        <p class="note" id="submitNote"></p>
+        <p class="signin"><span data-t="haveAccount">Ai deja cont?</span> <a href="../../web/index.html" data-t="signIn">Intră în cont</a></p>
+    </form>
+
+    <section class="card hidden" id="done" aria-live="polite">
+        <div class="done-icon" aria-hidden="true">✓</div>
+        <h2 id="doneTitle"></h2>
+        <p id="doneText"></p>
+        <div class="apps hidden" id="apps">
+            <a class="button" id="openEmby" href="../../web/index.html" data-t="openEmby">Intră în Emby</a>
+            <p class="help" data-t="appsHelp">În aplicațiile Emby (Android, iOS, Android TV, Fire TV, Samsung, LG) alege „Adaugă server” și introdu adresa:</p>
+            <p class="address" id="serverAddress"></p>
+            <a class="link" href="https://emby.media/download.html" rel="noopener noreferrer" target="_blank" data-t="getApps">Descarcă aplicațiile Emby</a>
+        </div>
+    </section>
+</main>
+</body>
+</html>

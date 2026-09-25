@@ -1,0 +1,272 @@
+<div is="emby-scroller" class="view flex flex-direction-column scrollFrameY flex-grow" data-horizontal="false" data-forcescrollbar="true" data-centerfocus="true" data-bindheader="true" data-controller="__plugin/registrationjs" data-title="Înregistrare">
+    <div class="scrollSlider flex-grow flex-direction-column padded-left padded-left-page padded-right padded-top-page padded-bottom-page registrationPage">
+        <style>
+            .registrationPage { --rg-bg: #1b1b1b; --rg-raised: #262626; --rg-card: #212121; --rg-head: #25402a; --rg-text: #fff; --rg-muted: rgba(255,255,255,.62); --rg-line: rgba(255,255,255,.14); --rg-accent: #52b54b; --rg-accent-soft: rgba(82,181,75,.18); --rg-danger: #e57373; --rg-warn: #ffb74d; color: var(--rg-text); }
+            .registrationPage *, .registrationPage *::before, .registrationPage *::after { box-sizing: border-box; }
+            .registrationPage [hidden] { display: none !important; }
+            .registrationPage .rg-wrap { max-width: 90em; width: 100%; margin: 0 auto; }
+            .registrationPage form { max-width: none !important; }
+            .registrationPage .rg-muted { color: var(--rg-muted); }
+            .registrationPage .rg-hero { display: flex; flex-wrap: wrap; align-items: center; gap: .6em 1.2em; margin-bottom: 1em; }
+            .registrationPage .rg-hero h2 { margin: 0; font-size: 1.6em; font-weight: 600; }
+            .registrationPage .rg-hero small { display: block; color: var(--rg-muted); font-size: .8em; }
+            .registrationPage .rg-icon { width: 2.6em; height: 2.6em; border-radius: .6em; display: grid; place-items: center; background: var(--rg-accent-soft); color: var(--rg-accent); }
+            .registrationPage .rg-chips { display: flex; flex-wrap: wrap; gap: .45em; margin-left: auto; }
+            .registrationPage .rg-chip { padding: .3em .75em; border-radius: 2em; background: var(--rg-raised); border: 1px solid var(--rg-line); font-size: .85em; white-space: nowrap; }
+            .registrationPage .rg-chip-on { border-color: var(--rg-accent); color: var(--rg-accent); }
+            .registrationPage .rg-chip-off { border-color: var(--rg-danger); color: var(--rg-danger); }
+            .registrationPage .rg-tabs { display: flex; gap: .25em; overflow-x: auto; border-bottom: 1px solid var(--rg-line); margin-bottom: 1.1em; }
+            .registrationPage .rg-tab { display: inline-flex; align-items: center; gap: .4em; padding: .7em .95em; background: none; border: 0; border-bottom: 3px solid transparent; color: var(--rg-muted); font: inherit; cursor: pointer; white-space: nowrap; }
+            .registrationPage .rg-tab[aria-selected="true"] { color: var(--rg-text); border-bottom-color: var(--rg-accent); font-weight: 600; }
+            .registrationPage .rg-count { display: inline-block; min-width: 1.6em; padding: 0 .45em; border-radius: 1em; background: var(--rg-line); font-size: .78em; text-align: center; font-weight: 600; }
+            .registrationPage .rg-count-hot { background: var(--rg-accent); color: #fff; }
+            .registrationPage .rg-subtabs { display: flex; flex-wrap: wrap; gap: .5em; margin-bottom: .9em; }
+            .registrationPage .rg-subtab { display: inline-flex; align-items: center; gap: .5em; padding: .55em 1em; border-radius: 2em; border: 1px solid var(--rg-line); background: var(--rg-raised); color: var(--rg-muted); font: inherit; cursor: pointer; }
+            .registrationPage .rg-subtab[aria-selected="true"] { border-color: var(--rg-accent); color: var(--rg-text); background: var(--rg-accent-soft); font-weight: 600; }
+            .registrationPage .rg-panel { display: grid; gap: 1.1em; }
+            .registrationPage .rg-card { background: var(--rg-card); border: 1px solid var(--rg-line); border-radius: .55em; padding: 1em 1.1em; min-width: 0; }
+            .registrationPage .rg-card h3 { margin: 0 0 .6em; font-size: 1.05em; font-weight: 600; display: flex; align-items: center; gap: .5em; }
+            .registrationPage .rg-card-desc { margin: -.2em 0 .8em; font-size: .86em; color: var(--rg-muted); line-height: 1.45; }
+            .registrationPage .rg-columns { display: grid; gap: 1.1em; grid-template-columns: repeat(auto-fit, minmax(min(100%, 30em), 1fr)); align-items: start; }
+            .registrationPage .rg-toolbar { display: flex; flex-wrap: wrap; gap: .5em; align-items: center; margin-bottom: .7em; }
+            .registrationPage .rg-input, .registrationPage .rg-select, .registrationPage .rg-textarea { width: 100%; background: var(--rg-raised); color: var(--rg-text); border: 1px solid var(--rg-line); border-radius: .35em; padding: .5em .6em; font: inherit; font-size: .92em; min-width: 0; }
+            .registrationPage .rg-textarea { min-height: 5.5em; resize: vertical; font-family: inherit; }
+            .registrationPage .rg-select option { background: var(--rg-raised); color: var(--rg-text); }
+            .registrationPage .rg-input:focus, .registrationPage .rg-select:focus, .registrationPage .rg-textarea:focus { outline: none; border-color: var(--rg-accent); }
+            .registrationPage .rg-search { flex: 1 1 14em; width: auto; }
+            .registrationPage .rg-btn { display: inline-flex; align-items: center; justify-content: center; gap: .4em; padding: .5em .9em; border-radius: .35em; border: 1px solid var(--rg-line); background: var(--rg-raised); color: var(--rg-text); font: inherit; font-size: .9em; cursor: pointer; white-space: nowrap; }
+            .registrationPage .rg-btn:hover { border-color: var(--rg-accent); }
+            .registrationPage .rg-btn:disabled { opacity: .5; cursor: default; }
+            .registrationPage .rg-btn .md-icon { font-size: 1.15em; }
+            .registrationPage .rg-btn-primary { background: var(--rg-accent); border-color: var(--rg-accent); color: #fff; font-weight: 600; }
+            .registrationPage .rg-btn-danger { border-color: var(--rg-danger); color: var(--rg-danger); }
+            .registrationPage .rg-btn-small { padding: .3em .6em; font-size: .82em; }
+            .registrationPage .rg-table-wrap { overflow: auto; max-height: 70vh; border: 1px solid var(--rg-line); border-radius: .45em; }
+            .registrationPage .rg-table { border-collapse: collapse; width: 100%; font-size: .88em; }
+            .registrationPage .rg-table th, .registrationPage .rg-table td { padding: .5em .6em; border-bottom: 1px solid var(--rg-line); text-align: left; vertical-align: top; }
+            .registrationPage .rg-table th { position: sticky; top: 0; background: var(--rg-head); font-size: .76em; letter-spacing: .03em; text-transform: uppercase; z-index: 1; white-space: nowrap; }
+            .registrationPage .rg-table td.rg-nowrap { white-space: nowrap; }
+            .registrationPage .rg-table tr.rg-selected td { background: var(--rg-accent-soft); }
+            .registrationPage .rg-sub { display: block; color: var(--rg-muted); font-size: .85em; }
+            .registrationPage .rg-badge { display: inline-block; padding: .08em .5em; border-radius: .6em; font-size: .76em; background: var(--rg-line); white-space: nowrap; }
+            .registrationPage .rg-badge-ok { background: rgba(82,181,75,.35); }
+            .registrationPage .rg-badge-warn { background: rgba(255,183,77,.35); }
+            .registrationPage .rg-badge-danger { background: rgba(229,115,115,.45); }
+            .registrationPage .rg-actions-cell { display: flex; flex-wrap: wrap; gap: .35em; }
+            .registrationPage .rg-empty { padding: 2em 1em; text-align: center; color: var(--rg-muted); }
+            .registrationPage .rg-fields { display: grid; gap: .2em 1.4em; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22em), 1fr)); }
+            .registrationPage .rg-field { display: grid; gap: .3em; padding: .55em 0; align-content: start; }
+            .registrationPage .rg-field-wide { grid-column: 1 / -1; }
+            .registrationPage .rg-field label { font-size: .9em; font-weight: 600; }
+            .registrationPage .rg-help { font-size: .8em; color: var(--rg-muted); line-height: 1.45; }
+            .registrationPage .rg-unit { display: flex; align-items: center; gap: .5em; }
+            .registrationPage .rg-unit .rg-input { max-width: 9em; }
+            .registrationPage .rg-switch { display: flex; align-items: flex-start; gap: .8em; padding: .6em 0; border-bottom: 1px solid var(--rg-line); cursor: pointer; }
+            .registrationPage .rg-switch:last-child { border-bottom: 0; }
+            .registrationPage .rg-switch input { flex: none; width: 1.2em; height: 1.2em; margin-top: .15em; accent-color: var(--rg-accent); }
+            .registrationPage .rg-switch b { display: block; font-weight: 600; font-size: .92em; }
+            .registrationPage .rg-kv { display: grid; grid-template-columns: max-content 1fr; gap: .35em 1.2em; font-size: .9em; }
+            .registrationPage .rg-kv > div:nth-child(odd) { color: var(--rg-muted); }
+            .registrationPage .rg-warning { padding: .6em .8em; border-radius: .4em; background: rgba(255,183,77,.14); color: var(--rg-warn); font-size: .87em; }
+            .registrationPage .rg-error { color: var(--rg-danger); }
+            .registrationPage .rg-link { display: flex; flex-wrap: wrap; gap: .5em; align-items: center; }
+            .registrationPage .rg-link code { flex: 1 1 18em; padding: .5em .6em; border-radius: .35em; background: var(--rg-raised); border: 1px solid var(--rg-line); word-break: break-all; font-size: .9em; }
+            .registrationPage .rg-savebar { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: .6em; padding: .8em 0; margin-top: .4em; background: linear-gradient(transparent, var(--rg-bg) 35%); z-index: 2; }
+            .registrationPage .rg-libs { display: grid; gap: .1em; grid-template-columns: repeat(auto-fill, minmax(14em, 1fr)); margin-top: .4em; }
+            .registrationPage .rg-libs label { display: flex; align-items: center; gap: .55em; padding: .35em 0; font-weight: 400; cursor: pointer; }
+            .registrationPage .rg-libs input { accent-color: var(--rg-accent); width: 1.1em; height: 1.1em; }
+            .registrationPage .rg-notes { white-space: pre-wrap; font-size: .86em; max-height: 16em; overflow: auto; padding: .6em; border-radius: .35em; background: var(--rg-raised); }
+            .registrationPage .rg-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+            .registrationPage a { color: var(--rg-accent); }
+            @media (max-width: 40em) {
+                .registrationPage .rg-hide-sm { display: none; }
+            }
+        </style>
+
+        <div class="rg-wrap">
+            <div class="rg-hero">
+                <div class="rg-icon"><span class="md-icon">person_add</span></div>
+                <div><h2>Înregistrare</h2><small>Cereri de cont noi, aprobate de administrator</small></div>
+                <div class="rg-chips heroChips"></div>
+            </div>
+
+            <div class="rg-tabs" role="tablist">
+                <button type="button" class="rg-tab" role="tab" data-tab="requests"><span class="md-icon">how_to_reg</span>Cereri <span class="rg-count tabCount"></span></button>
+                <button type="button" class="rg-tab" role="tab" data-tab="general"><span class="md-icon">toggle_on</span>General</button>
+                <button type="button" class="rg-tab" role="tab" data-tab="form"><span class="md-icon">edit_note</span>Formular</button>
+                <button type="button" class="rg-tab" role="tab" data-tab="access"><span class="md-icon">video_library</span>Acces implicit</button>
+                <button type="button" class="rg-tab" role="tab" data-tab="antibot"><span class="md-icon">shield</span>Anti-roboți</button>
+                <button type="button" class="rg-tab" role="tab" data-tab="notify"><span class="md-icon">notifications</span>Notificări</button>
+                <button type="button" class="rg-tab" role="tab" data-tab="invites"><span class="md-icon">confirmation_number</span>Invitații</button>
+                <button type="button" class="rg-tab" role="tab" data-tab="updates"><span class="md-icon">system_update</span>Actualizări <span class="rg-count updateCount" hidden>1</span></button>
+                <button type="button" class="rg-tab" role="tab" data-tab="maintenance"><span class="md-icon">build</span>Întreținere</button>
+            </div>
+
+            <!-- Cereri -->
+            <div class="rg-panel" data-panel="requests">
+                <div class="rg-subtabs" role="tablist">
+                    <button type="button" class="rg-subtab" data-sub="waiting" aria-selected="true">În așteptare <span class="rg-count countWaiting">0</span></button>
+                    <button type="button" class="rg-subtab" data-sub="processed" aria-selected="false">Procesate <span class="rg-count countProcessed">0</span></button>
+                </div>
+
+                <div class="rg-card">
+                    <div class="rg-toolbar">
+                        <input type="search" class="rg-input rg-search txtRequestSearch" placeholder="Caută nume, e-mail, telefon, IP…" aria-label="Caută">
+                        <select class="rg-select selProcessedFilter" hidden aria-label="Stare">
+                            <option value="">Toate</option>
+                        </select>
+                        <span class="waitingBulk">
+                            <button type="button" class="rg-btn rg-btn-primary btnApproveSelected" disabled><span class="md-icon">check</span>Aprobă selectate</button>
+                            <button type="button" class="rg-btn rg-btn-danger btnRejectSelected" disabled><span class="md-icon">close</span>Respinge selectate</button>
+                        </span>
+                        <button type="button" class="rg-btn btnRefresh" title="Reîncarcă"><span class="md-icon">refresh</span></button>
+                        <button type="button" class="rg-btn btnCsv" title="Export CSV"><span class="md-icon">download</span><span class="rg-hide-sm">CSV</span></button>
+                    </div>
+                    <div class="rg-table-wrap requestTable"></div>
+                </div>
+            </div>
+
+            <form class="settingsForm" novalidate>
+                <!-- General -->
+                <div class="rg-panel" data-panel="general" hidden>
+                    <div class="rg-card">
+                        <h3><span class="md-icon">link</span>Pagina de înregistrare</h3>
+                        <div class="rg-card-desc">Trimite linkul celor care vor un cont. Pagina merge în orice browser, inclusiv pe telefon.</div>
+                        <div class="rg-link"><code class="publicLink"></code>
+                            <button type="button" class="rg-btn btnCopyLink"><span class="md-icon">content_copy</span>Copiază</button>
+                            <a class="rg-btn openLink" target="_blank" rel="noopener"><span class="md-icon">open_in_new</span>Deschide</a>
+                        </div>
+                    </div>
+                    <div class="rg-columns">
+                        <div class="rg-card" data-group="general"></div>
+                        <div class="rg-card" data-group="limits"></div>
+                    </div>
+                    <div class="rg-card">
+                        <h3><span class="md-icon">login</span>Text pe ecranul de conectare Emby</h3>
+                        <div class="rg-card-desc">Emby afișează sub formularul de conectare un text simplu (fără link apăsabil). Plugin-ul îl adaugă la textul existent și îl poate scoate fără să atingă restul.</div>
+                        <textarea class="rg-textarea txtLoginNotice" rows="2"></textarea>
+                        <div class="rg-toolbar" style="margin-top:.6em">
+                            <button type="button" class="rg-btn rg-btn-primary btnSetNotice"><span class="md-icon">check</span>Afișează</button>
+                            <button type="button" class="rg-btn btnClearNotice"><span class="md-icon">close</span>Scoate</button>
+                            <span class="rg-help noticeState"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formular -->
+                <div class="rg-panel" data-panel="form" hidden>
+                    <div class="rg-columns">
+                        <div class="rg-card" data-group="fields"></div>
+                        <div class="rg-card" data-group="privacy"></div>
+                    </div>
+                </div>
+
+                <!-- Acces -->
+                <div class="rg-panel" data-panel="access" hidden>
+                    <div class="rg-card">
+                        <h3><span class="md-icon">video_library</span>Biblioteci</h3>
+                        <div class="rg-card-desc">Ce văd conturile aprobate. Se aplică la aprobare; conturilor existente le poți schimba accesul din profilul lor Emby.</div>
+                        <label class="rg-switch"><input type="radio" name="libMode" value="all" class="radLibAll"><span><b>Toate bibliotecile</b><span class="rg-help">Inclusiv cele adăugate mai târziu.</span></span></label>
+                        <label class="rg-switch"><input type="radio" name="libMode" value="some" class="radLibSome"><span><b>Doar bibliotecile selectate</b><span class="rg-help">Fără nicio bifă, contul nu vede nimic.</span></span></label>
+                        <div class="rg-libs libraryList"></div>
+                    </div>
+                    <div class="rg-columns">
+                        <div class="rg-card" data-group="access"></div>
+                        <div class="rg-card">
+                            <h3><span class="md-icon">lock</span>Mereu interzis</h3>
+                            <div class="rg-card-desc">Conturile create prin plugin nu primesc niciodată aceste drepturi. Paznicul le retrage dacă apar (de exemplu, bifate din greșeală), cât timp contul este „gestionat”. Din tab-ul Cereri poți elibera un cont anume ca să-i dai drepturi în plus.</div>
+                            <div class="rg-kv">
+                                <div>Administrare</div><div>nu</div>
+                                <div>Descărcare / sincronizare / conversie</div><div>nu</div>
+                                <div>Partajare publică și a elementelor</div><div>nu</div>
+                                <div>Ștergere de conținut</div><div>nu</div>
+                                <div>Administrare subtitrări / Live TV</div><div>nu</div>
+                                <div>Control la distanță al altor utilizatori</div><div>nu</div>
+                                <div>Încărcare de pe cameră</div><div>nu</div>
+                                <div>Afișat pe ecranul de conectare</div><div>nu (ascuns)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Anti-roboti -->
+                <div class="rg-panel" data-panel="antibot" hidden>
+                    <div class="rg-columns">
+                        <div class="rg-card" data-group="turnstile"></div>
+                        <div class="rg-card" data-group="pow"></div>
+                        <div class="rg-card" data-group="rate"></div>
+                        <div class="rg-card" data-group="blocks"></div>
+                    </div>
+                </div>
+
+                <!-- Notificari -->
+                <div class="rg-panel" data-panel="notify" hidden>
+                    <div class="rg-columns">
+                        <div class="rg-card" data-group="smtp" data-actions="smtp"></div>
+                        <div class="rg-card" data-group="userMail"></div>
+                        <div class="rg-card" data-group="channels" data-actions="telegram"></div>
+                        <div class="rg-card" data-group="events"></div>
+                    </div>
+                </div>
+
+                <!-- Intretinere: setarile de dezinstalare -->
+                <div class="rg-panel" data-panel="maintenance" hidden>
+                    <div class="rg-columns">
+                        <div class="rg-card">
+                            <h3><span class="md-icon">insights</span>Statistici (30 de zile)</h3>
+                            <div class="statsBox"></div>
+                        </div>
+                        <div class="rg-card" data-group="uninstall"></div>
+                        <div class="rg-card">
+                            <h3><span class="md-icon">delete_forever</span>Șterge datele plugin-ului</h3>
+                            <div class="rg-card-desc">Șterge toate cererile (cu nume, e-mail, telefon, IP), invitațiile și statisticile. Conturile Emby rămân. Nu se poate anula.</div>
+                            <button type="button" class="rg-btn rg-btn-danger btnPurge"><span class="md-icon">delete_forever</span>Șterge datele</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actualizari: setari -->
+                <div class="rg-panel" data-panel="updates" hidden>
+                    <div class="rg-columns">
+                        <div class="rg-card">
+                            <h3><span class="md-icon">system_update</span>Versiune</h3>
+                            <div class="rg-kv updateInfo"></div>
+                            <div class="updateError rg-error" hidden></div>
+                            <div class="rg-notes updateNotes" hidden></div>
+                            <div class="rg-toolbar" style="margin-top:.8em">
+                                <button type="button" class="rg-btn btnCheckUpdate"><span class="md-icon">refresh</span>Verifică acum</button>
+                                <button type="button" class="rg-btn rg-btn-primary btnInstallUpdate" hidden><span class="md-icon">download</span>Actualizează</button>
+                                <button type="button" class="rg-btn btnRollback" hidden><span class="md-icon">undo</span>Revino la versiunea anterioară</button>
+                                <button type="button" class="rg-btn rg-btn-primary btnRestart" hidden><span class="md-icon">restart_alt</span>Repornește Emby</button>
+                            </div>
+                        </div>
+                        <div class="rg-card" data-group="updates"></div>
+                    </div>
+                </div>
+
+                <div class="rg-savebar" hidden>
+                    <span class="rg-help saveState"></span>
+                    <button type="submit" class="rg-btn rg-btn-primary"><span class="md-icon">save</span>Salvează</button>
+                </div>
+            </form>
+
+            <!-- Invitatii -->
+            <div class="rg-panel" data-panel="invites" hidden>
+                <div class="rg-card">
+                    <h3><span class="md-icon">add_circle</span>Cod nou</h3>
+                    <div class="rg-card-desc">Folosite când modul este „Doar cu invitație”. Cererile venite cu cod tot trec prin aprobarea ta.</div>
+                    <div class="rg-fields">
+                        <div class="rg-field"><label>Notă (pentru cine)</label><input class="rg-input txtInviteNote" maxlength="200"></div>
+                        <div class="rg-field"><label>Utilizări (0 = nelimitat)</label><input class="rg-input txtInviteUses" type="number" min="0" max="1000" value="1"></div>
+                        <div class="rg-field"><label>Valabil (zile, 0 = fără expirare)</label><input class="rg-input txtInviteDays" type="number" min="0" max="3650" value="14"></div>
+                    </div>
+                    <button type="button" class="rg-btn rg-btn-primary btnCreateInvite"><span class="md-icon">add</span>Generează</button>
+                </div>
+                <div class="rg-card">
+                    <h3><span class="md-icon">list</span>Coduri</h3>
+                    <div class="rg-table-wrap inviteTable"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

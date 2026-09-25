@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Registration</AssemblyName>
+    <RootNamespace>Registration</RootNamespace>
+    <!-- Emby incarca plugin-ul dintr-un singur .dll: nicio dependinta in afara de Emby. -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseLocalEmby)' == 'true'">
+    <Reference Include="MediaBrowser.Common" HintPath="$(EmbySystemDir)/MediaBrowser.Common.dll" Private="false" />
+    <Reference Include="MediaBrowser.Controller" HintPath="$(EmbySystemDir)/MediaBrowser.Controller.dll" Private="false" />
+    <Reference Include="MediaBrowser.Model" HintPath="$(EmbySystemDir)/MediaBrowser.Model.dll" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLocalEmby)' != 'true'">
+    <PackageReference Include="MediaBrowser.Server.Core" Version="$(EmbyVersion)">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration\*.html;Configuration\*.js" LogicalName="Registration.Configuration.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Web\*" LogicalName="Registration.Web.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Updates\release-key.pem" LogicalName="Registration.Updates.release-key.pem" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Registration.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Registration\Registration.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLocalEmby)' == 'true'">
+    <Reference Include="MediaBrowser.Common" HintPath="$(EmbySystemDir)/MediaBrowser.Common.dll" />
+    <Reference Include="MediaBrowser.Controller" HintPath="$(EmbySystemDir)/MediaBrowser.Controller.dll" />
+    <Reference Include="MediaBrowser.Model" HintPath="$(EmbySystemDir)/MediaBrowser.Model.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

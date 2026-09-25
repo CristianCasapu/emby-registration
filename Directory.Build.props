@@ -1,0 +1,39 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      Versiunea Emby contra careia se compileaza.
+
+      ABI-ul plugin-urilor Emby e legat de versiunea serverului: un plugin
+      compilat contra unei versiuni mai noi decat serverul pe care ruleaza nu se
+      incarca. Se schimba DOAR aici si nicaieri altundeva, ca sa se poata alinia
+      cu serverul de deploy printr-o singura modificare.
+
+      Cand serverul e instalat pe masina de build (EmbySystemDir exista), se
+      compileaza direct contra assembly-urilor lui - exact ABI-ul pe care va
+      rula. Pachetul NuGet ramane doar rezerva pentru masini fara Emby: e in
+      urma serverului (4.9.1.90 fata de 4.9.5.0) si ii lipsesc tipuri pe care
+      serverul le are, de exemplu IHasWebPages.
+    -->
+    <EmbyVersion>4.9.1.90</EmbyVersion>
+    <EmbySystemDir Condition="'$(EmbySystemDir)' == ''">/opt/emby-server/system</EmbySystemDir>
+    <UseLocalEmby Condition="Exists('$(EmbySystemDir)/MediaBrowser.Controller.dll')">true</UseLocalEmby>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Product>Înregistrare</Product>
+    <Authors>Cristian Casapu</Authors>
+    <Version>0.1.0</Version>
+    <RepositoryUrl>https://github.com/CristianCasapu/emby-registration</RepositoryUrl>
+    <Copyright>Copyright © Cristian Casapu</Copyright>
+  </PropertyGroup>
+
+</Project>
