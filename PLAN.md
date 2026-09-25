@@ -17,7 +17,7 @@ Legendă: ⬜ neînceput · 🟨 în lucru · ✅ gata · ⛔ blocat · ❓ așt
 | # | Etapă | Stare | Note |
 |---|-------|-------|------|
 | 0 | Decizii (secțiunea 9) | ✅ | Răspunse 2026-09-25 |
-| 1 | Schelet proiect, repo GitHub public, cheie de deploy | 🟨 | Proiect + git local gata; repo-ul GitHub și token-ul le creează utilizatorul |
+| 1 | Schelet proiect, repo GitHub public, cheie de deploy | ✅ | Push prin aliasul SSH `github-registration` (cheia de cont); token pentru release-uri încă lipsește |
 | 2 | Spike tehnic: rută neautentificată, creare user, politici, PIN | ✅ | API-uri verificate prin reflecție pe 4.9.5; vezi „Descoperiri” |
 | 3 | Configurație plugin + pagina de administrare | ✅ | 9 tab-uri; de testat pe server |
 | 4 | Pagina publică de înregistrare (UI) | ✅ | Testată headless (desktop, mobil, RO/EN) pe server de probă |
@@ -38,6 +38,7 @@ Jurnal de progres (se completează pe parcurs):
 | 2026-09-25 | — | Plan inițial |
 | 2026-09-25 | — | Decizii D1–D8 răspunse și integrate în plan |
 | 2026-09-25 | inițial | Implementare completă etapele 2–10, teste unitare și UI public |
+| 2026-09-25 | 100c699 | Publicat pe GitHub (public) |
 
 ### Descoperiri din spike (Emby 4.9.5)
 
