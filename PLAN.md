@@ -19,7 +19,7 @@ Legendă: ⬜ neînceput · 🟨 în lucru · ✅ gata · ⛔ blocat · ❓ așt
 | 0 | Decizii (secțiunea 9) | ✅ | Răspunse 2026-09-25 |
 | 1 | Schelet proiect, repo GitHub public, cheie de deploy | ✅ | Push prin aliasul SSH `github-registration` (cheia de cont); token pentru release-uri încă lipsește |
 | 2 | Spike tehnic: rută neautentificată, creare user, politici, PIN | ✅ | API-uri verificate prin reflecție pe 4.9.5; vezi „Descoperiri” |
-| 3 | Configurație plugin + pagina de administrare | ✅ | 9 tab-uri; de testat pe server |
+| 3 | Configurație plugin + pagina de administrare | ✅ | 9 tab-uri; testat în Emby (aprobare/respingere din UI, salvare, invitații) |
 | 4 | Pagina publică de înregistrare (UI) | ✅ | Testată headless (desktop, mobil, RO/EN) pe server de probă |
 | 5 | Backend înregistrare + validări | ✅ | |
 | 6 | Anti-roboți și limitare de rată | ✅ | |
@@ -27,9 +27,9 @@ Legendă: ⬜ neînceput · 🟨 în lucru · ✅ gata · ⛔ blocat · ❓ așt
 | 8 | Aprobare, verificare e-mail, notificări | ✅ | SMTP/Telegram netestate fără date reale |
 | 9 | Actualizare din GitHub | 🟨 | Release fără token funcționează (v0.9.0 pre-release); instalarea din panou de testat pe server |
 | 10 | Dezinstalare curată + export/ștergere date (GDPR) | ✅ | |
-| 11 | Teste (unitare + UI headless) | 🟨 | 81 teste unitare; UI public pe mock (`~/src/ui-harness/reg-ui.js`); panoul admin de testat după deploy |
+| 11 | Teste (unitare + UI headless) | ✅ | 81 unitare; `reg-ui.js` (pagina publică), `reg-e2e.js` (35 verificări pe Emby real), `reg-admin.js` (panou) |
 | 12 | Documentație (README RO/EN), prima versiune `v1.0.0` | 🟨 | README gata; release după repo |
-| 13 | Deploy pe poweredge | ⬜ | `tools/deploy.sh --restart` refuză dacă se redă ceva |
+| 13 | Deploy pe poweredge | ✅ | Instalat 2026-09-25; înregistrarea rămâne închisă până o deschide adminul |
 
 Jurnal de progres (se completează pe parcurs):
 
@@ -40,6 +40,7 @@ Jurnal de progres (se completează pe parcurs):
 | 2026-09-25 | inițial | Implementare completă etapele 2–10, teste unitare și UI public |
 | 2026-09-25 | 100c699 | Publicat pe GitHub (public) |
 | 2026-09-25 | v0.9.0 | Primul release (pre-release), publicat de GitHub Actions, semnătură verificată |
+| 2026-09-25 | — | Deploy pe server; corectat: configurația nu se poate salva în constructorul plugin-ului; test e2e complet trecut |
 
 ### Descoperiri din spike (Emby 4.9.5)
 

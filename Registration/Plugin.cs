@@ -19,7 +19,14 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
+    }
 
+    /// <summary>
+    /// Cheia HMAC a tokenurilor de formular, generata la prima pornire. Nu in constructor:
+    /// acolo Emby nu a setat inca calea fisierului de configurare.
+    /// </summary>
+    public void EnsureFormSecret()
+    {
         if (string.IsNullOrEmpty(Configuration.FormSecret))
         {
             Configuration.FormSecret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));

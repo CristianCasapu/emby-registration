@@ -39,6 +39,7 @@ public sealed class RegistrationHost : IServerEntryPoint
     public void Run()
     {
         var plugin = Plugin.Instance ?? throw new InvalidOperationException("Plugin-ul nu este incarcat.");
+        plugin.EnsureFormSecret();
         var store = new RequestStore(plugin.StoreDirectory);
         var notifier = new AdminNotifier(_activity, _logger);
         var manager = new RegistrationManager(_userManager, _logger, store, notifier, new WebChecks(_logger))

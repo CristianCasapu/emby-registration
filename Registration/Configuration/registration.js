@@ -378,7 +378,7 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
         box.innerHTML = instance.libraries.map(function (lib) {
             var checked = all || instance.selectedLibraries.indexOf(lib.Id) >= 0;
             return '<label><input type="checkbox" value="' + escapeHtml(lib.Id) + '"' + (checked ? ' checked' : '') + (all ? ' disabled' : '') + '>' +
-                escapeHtml(lib.Name) + (lib.CollectionType ? ' <span class="rg-muted">(' + escapeHtml(lib.CollectionType) + ')</span>' : '') + '</label>';
+                '<span>' + escapeHtml(lib.Name) + (lib.CollectionType ? ' <span class="rg-muted">(' + escapeHtml(lib.CollectionType) + ')</span>' : '') + '</span></label>';
         }).join('') || '<span class="rg-muted">Serverul nu are biblioteci.</span>';
     }
 
