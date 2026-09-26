@@ -9,6 +9,10 @@
             title: 'Cont nou',
             loading: 'Se încarcă…',
             closedTitle: 'Înregistrarea nu este deschisă',
+            titleDuplicate: 'Nu poți cere încă un cont',
+            titleBlocked: 'Acces blocat temporar',
+            titleNetwork: 'Înregistrare indisponibilă',
+            codeAccepted: 'Codul este corect și rămâne valabil pentru altcineva. ',
             closed: 'Momentan nu se pot crea conturi noi.',
             not_yet: 'Înregistrarea nu a început încă. Revino mai târziu.',
             ended: 'Perioada de înregistrare s-a încheiat.',
@@ -112,6 +116,10 @@
             title: 'New account',
             loading: 'Loading…',
             closedTitle: 'Registration is not open',
+            titleDuplicate: 'You cannot request another account',
+            titleBlocked: 'Access temporarily blocked',
+            titleNetwork: 'Registration unavailable',
+            codeAccepted: 'The code is correct and stays valid for someone else. ',
             closed: 'New accounts cannot be created at the moment.',
             not_yet: 'Registration has not started yet. Please come back later.',
             ended: 'The registration period has ended.',
@@ -832,12 +840,19 @@
         $('doneTitle').focus && $('doneTitle').setAttribute('tabindex', '-1');
     }
 
-    function showClosed(reason, until) {
+    function showClosed(reason, until, codeWasRight) {
         var generic = ['closed', 'not_yet', 'ended', 'full', 'busy'].indexOf(reason || 'closed') >= 0;
         var detail = info && info.ClosedDetail ? ' (' + info.ClosedDetail + ')' : '';
         until = until || (info && info.BlockedUntil);
         var when = until ? new Date(until).toLocaleString(lang === 'en' ? 'en-GB' : 'ro-RO', { dateStyle: 'short', timeStyle: 'short' }) : '';
-        $('closedText').textContent = (generic && info && info.ClosedMessage) || t(reason || 'closed', { name: detail, until: when });
+        $('closedText').textContent = (codeWasRight ? t('codeAccepted') : '') +
+            ((generic && info && info.ClosedMessage) || t(reason || 'closed', { name: detail, until: when }));
+        var title = /^(duplicate_|signed_in)/.test(reason || '') ? 'titleDuplicate'
+            : reason === 'blocked' ? 'titleBlocked'
+            : /^(network_blocked|country_blocked|rate_limited)$/.test(reason || '') ? 'titleNetwork' : 'closedTitle';
+        var heading = document.querySelector('#closed h2');
+        heading.setAttribute('data-t', title);
+        heading.textContent = t(title);
         show('closed');
     }
 
@@ -889,7 +904,8 @@
                 $('code').select();
             } else {
                 if (result.Detail) { info.ClosedDetail = result.Detail; }
-                showClosed(result.Error || 'rate_limited');
+                // Motiv de cont dublu dupa un cod corect: codul ramane valabil.
+                showClosed(result.Error || 'rate_limited', null, /^(duplicate_|signed_in)/.test(result.Error || ''));
             }
         }, function () {
             setError('code', 'network');
