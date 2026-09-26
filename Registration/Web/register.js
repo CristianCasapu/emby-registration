@@ -9,25 +9,14 @@
             title: 'Cont nou',
             loading: 'Se încarcă…',
             closedTitle: 'Înregistrarea nu este deschisă',
-            titleDuplicate: 'Nu poți cere încă un cont',
-            titleBlocked: 'Acces blocat temporar',
-            titleNetwork: 'Înregistrare indisponibilă',
-            codeAccepted: 'Codul este corect și rămâne valabil pentru altcineva. ',
+            titleUnavailable: 'Indisponibil',
             closed: 'Momentan nu se pot crea conturi noi.',
-            not_yet: 'Înregistrarea nu a început încă. Revino mai târziu.',
+            not_yet: 'Înregistrarea nu a început încă.',
             ended: 'Perioada de înregistrare s-a încheiat.',
-            full: 'Numărul maxim de conturi a fost atins.',
-            busy: 'Sunt multe cereri în așteptare. Încearcă din nou mai târziu.',
-            duplicate_device: 'De pe acest dispozitiv s-a cerut deja un cont. Dacă e o greșeală, contactează administratorul.',
-            duplicate_network: 'Din această rețea s-a cerut deja un cont recent. Dacă e o greșeală, contactează administratorul.',
-            signed_in: 'Pe acest browser ești deja conectat la server{name}. Nu ai nevoie de un cont nou.',
-            network_blocked: 'Înregistrarea nu este disponibilă prin VPN, proxy, Tor sau rețele de centre de date. Deconectează VPN-ul și încearcă din nou.',
-            country_blocked: 'Înregistrarea nu este disponibilă din țara ta.',
-            rate_limited: 'Prea multe încercări. Încearcă din nou mai târziu.',
-            blocked: 'Prea multe coduri greșite. Poți încerca din nou după {until}.',
-            locked: 'Formularul s-a închis. Reîncarcă pagina și introdu codul de acces.',
+            unavailable: 'Înregistrarea nu este disponibilă.',
+            locked: 'Reîncarcă pagina.',
             lockedTitle: 'Cod de acces',
-            lockedText: 'Contul se cere doar cu un cod primit de la administrator.',
+            lockedText: 'Introdu codul primit.',
             codeLabel: 'Codul (5 caractere)',
             unlock: 'Continuă',
             introApproval: 'Completează formularul. Contul devine activ după ce administratorul aprobă cererea; vei primi un e-mail.',
@@ -75,7 +64,7 @@
             confirmAlready: 'Nu mai trebuie să faci nimic.',
             confirmBadTitle: 'Linkul nu mai este valabil',
             confirmBad: 'Linkul de confirmare a expirat sau nu este corect. Poți trimite o cerere nouă.',
-            confirmBusy: 'Prea multe încercări. Încearcă din nou peste o oră.',
+            confirmBusy: 'Încearcă mai târziu.',
             errors: {
                 required: 'Câmp obligatoriu.',
                 username_length: 'Între {min} și {max} caractere.',
@@ -84,30 +73,27 @@
                 username_taken: 'Numele este deja folosit. Alege altul.',
                 name_invalid: 'Folosește doar litere, spațiu, cratimă sau apostrof.',
                 email_invalid: 'Adresa de e-mail nu pare corectă.',
-                email_blocked: 'Folosește o adresă de e-mail permanentă (nu una temporară).',
+                email_rejected: 'Adresa nu este acceptată.',
                 phone_invalid: 'Numărul nu pare corect pentru țara aleasă.',
-                phone_country: 'Numerele din această țară nu sunt acceptate.',
+                phone_rejected: 'Numărul nu este acceptat.',
                 password_short: 'Parola trebuie să aibă cel puțin {min} caractere.',
                 password_long: 'Parola este prea lungă (maximum 128 de caractere).',
                 password_weak: 'Parola este prea simplă.',
                 password_username: 'Parola nu trebuie să conțină numele de utilizator.',
-                password_pwned: 'Această parolă apare în scurgeri de date publice. Alege alta.',
+                password_pwned: 'Parolă nesigură. Alege alta.',
                 password_mismatch: 'Parolele nu coincid.',
                 pin_invalid: 'PIN-ul are exact 4 cifre.',
                 pin_weak: 'PIN-ul este prea simplu (ex. 1111, 1234).',
                 consent_required: 'Este necesar acordul tău.',
                 invite_invalid: 'Codul de invitație nu este valabil.',
-                phone_taken: 'Acest număr de telefon a fost deja folosit pentru un cont.',
                 code_length: 'Codul are exact 5 caractere.',
-                wrong_code: 'Cod greșit. Mai ai {left} încercări.',
-                wrong_code_last: 'Cod greșit. Mai ai o singură încercare; după încă o greșeală, accesul se blochează 24 de ore.',
-                token_invalid: 'Formularul nu mai este valabil. Am pregătit unul nou: apasă din nou „Trimite”.',
-                token_expired: 'Formularul a expirat. Am pregătit unul nou: apasă din nou „Trimite”.',
-                too_fast: 'Ai completat foarte repede. Așteaptă câteva secunde și apasă din nou „Trimite”.',
-                bot_check: 'Verificarea anti-roboți nu a reușit. Reîncarcă pagina și completează formularul din nou.',
-                rate_limited: 'Prea multe încercări. Încearcă din nou peste {minutes} minute.',
-                blocked: 'Cererile de la această adresă nu sunt acceptate.',
-                server_error: 'A apărut o eroare pe server. Încearcă din nou mai târziu.',
+                wrong_code: 'Cod greșit.',
+                error: 'A apărut o eroare. Încearcă din nou.',
+                
+                
+                
+                
+                server_error: 'A apărut o eroare. Încearcă mai târziu.',
                 network: 'Serverul nu răspunde. Verifică conexiunea și încearcă din nou.',
                 fields: 'Verifică câmpurile marcate.'
             }
@@ -116,25 +102,14 @@
             title: 'New account',
             loading: 'Loading…',
             closedTitle: 'Registration is not open',
-            titleDuplicate: 'You cannot request another account',
-            titleBlocked: 'Access temporarily blocked',
-            titleNetwork: 'Registration unavailable',
-            codeAccepted: 'The code is correct and stays valid for someone else. ',
+            titleUnavailable: 'Unavailable',
             closed: 'New accounts cannot be created at the moment.',
-            not_yet: 'Registration has not started yet. Please come back later.',
+            not_yet: 'Registration has not started yet.',
             ended: 'The registration period has ended.',
-            full: 'The maximum number of accounts has been reached.',
-            busy: 'There are many pending requests. Please try again later.',
-            duplicate_device: 'An account was already requested from this device. If this is a mistake, contact the administrator.',
-            duplicate_network: 'An account was recently requested from this network. If this is a mistake, contact the administrator.',
-            signed_in: 'This browser is already signed in to the server{name}. You do not need a new account.',
-            network_blocked: 'Registration is not available through VPNs, proxies, Tor or data-center networks. Disconnect the VPN and try again.',
-            country_blocked: 'Registration is not available from your country.',
-            rate_limited: 'Too many attempts. Please try again later.',
-            blocked: 'Too many wrong codes. You can try again after {until}.',
-            locked: 'The form has closed. Reload the page and enter the access code.',
+            unavailable: 'Registration is not available.',
+            locked: 'Reload the page.',
             lockedTitle: 'Access code',
-            lockedText: 'Accounts can be requested only with a code from the administrator.',
+            lockedText: 'Enter the code you received.',
             codeLabel: 'Code (5 characters)',
             unlock: 'Continue',
             introApproval: 'Fill in the form. Your account becomes active once the administrator approves it; you will get an email.',
@@ -182,7 +157,7 @@
             confirmAlready: 'There is nothing else to do.',
             confirmBadTitle: 'This link is no longer valid',
             confirmBad: 'The confirmation link has expired or is not correct. You can send a new request.',
-            confirmBusy: 'Too many attempts. Please try again in an hour.',
+            confirmBusy: 'Please try again later.',
             errors: {
                 required: 'Required.',
                 username_length: 'Between {min} and {max} characters.',
@@ -191,30 +166,27 @@
                 username_taken: 'This name is taken. Please choose another.',
                 name_invalid: 'Use only letters, spaces, hyphens or apostrophes.',
                 email_invalid: 'This email address does not look right.',
-                email_blocked: 'Please use a permanent email address (not a temporary one).',
+                email_rejected: 'This address is not accepted.',
                 phone_invalid: 'This number does not look right for the selected country.',
-                phone_country: 'Numbers from this country are not accepted.',
+                phone_rejected: 'This number is not accepted.',
                 password_short: 'The password must have at least {min} characters.',
                 password_long: 'The password is too long (128 characters at most).',
                 password_weak: 'The password is too simple.',
                 password_username: 'The password must not contain the username.',
-                password_pwned: 'This password appears in public data breaches. Please choose another.',
+                password_pwned: 'Unsafe password. Choose another.',
                 password_mismatch: 'The passwords do not match.',
                 pin_invalid: 'The PIN has exactly 4 digits.',
                 pin_weak: 'The PIN is too simple (e.g. 1111, 1234).',
                 consent_required: 'Your consent is required.',
                 invite_invalid: 'The invitation code is not valid.',
-                phone_taken: 'This phone number has already been used for an account.',
                 code_length: 'The code has exactly 5 characters.',
-                wrong_code: 'Wrong code. {left} attempts left.',
-                wrong_code_last: 'Wrong code. One attempt left; after another mistake, access is blocked for 24 hours.',
-                token_invalid: 'The form is no longer valid. A new one is ready: press "Send" again.',
-                token_expired: 'The form has expired. A new one is ready: press "Send" again.',
-                too_fast: 'That was very fast. Wait a few seconds and press "Send" again.',
-                bot_check: 'The anti-bot check failed. Reload the page and fill in the form again.',
-                rate_limited: 'Too many attempts. Please try again in {minutes} minutes.',
-                blocked: 'Requests from this address are not accepted.',
-                server_error: 'A server error occurred. Please try again later.',
+                wrong_code: 'Wrong code.',
+                error: 'An error occurred. Please try again.',
+                
+                
+                
+                
+                server_error: 'An error occurred. Please try again later.',
                 network: 'The server is not responding. Check your connection and try again.',
                 fields: 'Please check the highlighted fields.'
             }
@@ -782,21 +754,13 @@
             return;
         }
 
-        if (result.Outcome === 'Closed' || result.Outcome === 'Blocked') {
+        if (result.Outcome === 'Closed') {
             showClosed(result.Error);
             return;
         }
 
-        if (result.Outcome === 'RateLimited') {
-            formError('rate_limited', { minutes: Math.max(1, Math.ceil((result.RetryAfterSeconds || 60) / 60)) });
-            return;
-        }
-
-        formError(result.Error || 'server_error');
-        // Token folosit, expirat sau respins: pregatim unul nou pentru urmatoarea apasare.
-        if (result.Outcome === 'Expired' || result.Error === 'bot_check' || result.Error === 'too_fast') {
-            loadInfo().catch(function () { /* se reincearca la urmatoarea trimitere */ });
-        }
+        formError(result.Error === 'server_error' ? 'server_error' : 'error');
+        loadInfo().catch(function () { /* se reincearca la urmatoarea trimitere */ });
     }
 
     function showDone(status, confirmOutcome) {
@@ -840,16 +804,10 @@
         $('doneTitle').focus && $('doneTitle').setAttribute('tabindex', '-1');
     }
 
-    function showClosed(reason, until, codeWasRight) {
-        var generic = ['closed', 'not_yet', 'ended', 'full', 'busy'].indexOf(reason || 'closed') >= 0;
-        var detail = info && info.ClosedDetail ? ' (' + info.ClosedDetail + ')' : '';
-        until = until || (info && info.BlockedUntil);
-        var when = until ? new Date(until).toLocaleString(lang === 'en' ? 'en-GB' : 'ro-RO', { dateStyle: 'short', timeStyle: 'short' }) : '';
-        $('closedText').textContent = (codeWasRight ? t('codeAccepted') : '') +
-            ((generic && info && info.ClosedMessage) || t(reason || 'closed', { name: detail, until: when }));
-        var title = /^(duplicate_|signed_in)/.test(reason || '') ? 'titleDuplicate'
-            : reason === 'blocked' ? 'titleBlocked'
-            : /^(network_blocked|country_blocked|rate_limited)$/.test(reason || '') ? 'titleNetwork' : 'closedTitle';
+    function showClosed(reason) {
+        reason = ['closed', 'not_yet', 'ended'].indexOf(reason || 'closed') >= 0 ? (reason || 'closed') : 'unavailable';
+        $('closedText').textContent = (reason !== 'unavailable' && info && info.ClosedMessage) || t(reason);
+        var title = reason === 'unavailable' ? 'titleUnavailable' : 'closedTitle';
         var heading = document.querySelector('#closed h2');
         heading.setAttribute('data-t', title);
         heading.textContent = t(title);
@@ -897,15 +855,11 @@
             if (result.Ok) {
                 return loadInfo().then(startForm);
             }
-            if (result.Error === 'blocked') {
-                showClosed('blocked', result.BlockedUntil);
-            } else if (result.Error === 'wrong_code') {
-                setError('code', result.AttemptsLeft === 1 ? 'wrong_code_last' : 'wrong_code', { left: result.AttemptsLeft });
+            if (result.Error === 'wrong_code') {
+                setError('code', 'wrong_code');
                 $('code').select();
             } else {
-                if (result.Detail) { info.ClosedDetail = result.Detail; }
-                // Motiv de cont dublu dupa un cod corect: codul ramane valabil.
-                showClosed(result.Error || 'rate_limited', null, /^(duplicate_|signed_in)/.test(result.Error || ''));
+                showClosed('unavailable');
             }
         }, function () {
             setError('code', 'network');

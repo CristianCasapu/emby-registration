@@ -151,7 +151,7 @@ public sealed class ConfirmResult
 }
 
 /// <summary>Rutele publice (fara autentificare) ale paginii de inregistrare.</summary>
-public sealed class PublicService : IService, IRequiresRequest
+public sealed partial class PublicService : IService, IRequiresRequest
 {
     private static readonly Dictionary<string, string> Assets = new(StringComparer.Ordinal)
     {
@@ -162,6 +162,9 @@ public sealed class PublicService : IService, IRequiresRequest
     };
 
     private readonly IHttpResultFactory _resultFactory;
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"^[ \t]*//[^\n]*\n", System.Text.RegularExpressions.RegexOptions.Multiline)]
+    private static partial System.Text.RegularExpressions.Regex CommentLines();
 
     public PublicService(IHttpResultFactory resultFactory)
     {
@@ -199,7 +202,14 @@ public sealed class PublicService : IService, IRequiresRequest
         using var stream = typeof(PublicService).Assembly.GetManifestResourceStream("Registration.Web." + name)
             ?? throw new FileNotFoundException("Resursa lipseste din plugin: " + name);
         using var reader = new StreamReader(stream);
-        return _resultFactory.GetResult(Request, reader.ReadToEnd().AsSpan(), contentType, Headers());
+        var text = reader.ReadToEnd();
+        if (name.EndsWith(".js", StringComparison.Ordinal))
+        {
+            // Comentariile (care descriu verificarile) nu pleaca spre browser.
+            text = CommentLines().Replace(text, string.Empty);
+        }
+
+        return _resultFactory.GetResult(Request, text.AsSpan(), contentType, Headers());
     }
 
     /// <summary>
@@ -266,13 +276,12 @@ public sealed class PublicService : IService, IRequiresRequest
         var info = new RegistrationInfo
         {
             Open = closed == null,
-            ClosedReason = closed,
+            ClosedReason = closed == null ? null : PublicReason(closed),
             ClosedMessage = closed == null || string.IsNullOrWhiteSpace(settings.ClosedMessage) ? null : settings.ClosedMessage.Trim(),
             ServerName = manager.ServerName(manager.DefaultServerName),
             Mode = settings.Mode,
             ServerUrl = string.IsNullOrWhiteSpace(settings.PublicUrl) ? null : settings.PublicUrl.Trim().TrimEnd('/'),
-            ClosedDetail = detail,
-            BlockedUntil = block?.Until,
+
             Device = device,
             ServerId = manager.ServerId,
         };
@@ -316,13 +325,7 @@ public sealed class PublicService : IService, IRequiresRequest
     public async Task<object> Post(SubmitRegistration request)
     {
         var result = await Manager.SubmitAsync(request, Origin(), Request.CancellationToken).ConfigureAwait(false);
-        var headers = Headers();
-        if (result.Outcome == "RateLimited")
-        {
-            headers["Retry-After"] = Math.Max(1, result.RetryAfterSeconds).ToString(System.Globalization.CultureInfo.InvariantCulture);
-        }
-
-        return _resultFactory.GetResult(Request, result, headers);
+        return _resultFactory.GetResult(Request, PublicResult(result), Headers());
     }
 
     public object Post(UnlockRegistration request)
@@ -334,13 +337,13 @@ public sealed class PublicService : IService, IRequiresRequest
         var headers = Headers();
         if (settings.RequireSameOrigin && !RegistrationManager.SameOrigin(origin))
         {
-            return _resultFactory.GetResult(Request, new UnlockResult { Error = "rate_limited" }, headers);
+            return _resultFactory.GetResult(Request, new UnlockResult { Error = "unavailable" }, headers);
         }
 
         var network = manager.Network(origin);
-        if (manager.GateVisitor(origin, network) is { } gate)
+        if (manager.GateVisitor(origin, network) != null)
         {
-            return _resultFactory.GetResult(Request, new UnlockResult { Error = gate }, headers);
+            return _resultFactory.GetResult(Request, new UnlockResult { Error = "unavailable" }, headers);
         }
 
         var device = origin.DeviceCookie ?? request.Device;
@@ -353,7 +356,9 @@ public sealed class PublicService : IService, IRequiresRequest
             result.Pass = null;
         }
 
-        return _resultFactory.GetResult(Request, result, headers);
+        var visible = result.Ok ? new UnlockResult { Ok = true }
+            : new UnlockResult { Error = result.Error == "wrong_code" ? "wrong_code" : "unavailable" };
+        return _resultFactory.GetResult(Request, visible, headers);
     }
 
     public object Post(ConfirmRegistrationEmail request) => Json(new ConfirmResult
@@ -363,6 +368,44 @@ public sealed class PublicService : IService, IRequiresRequest
     });
 
     private object Json<T>(T value) where T : class => _resultFactory.GetResult(Request, value, Headers());
+
+    /// <summary>
+    /// Vizitatorul afla doar ca nu se poate: motivul exact (cont dublu, retea, blocare,
+    /// limite, verificari anti-robot) ramane in jurnal, statistici si in panoul adminului.
+    /// </summary>
+    internal static string PublicReason(string? reason) => reason switch
+    {
+        "closed" or "full" or "busy" => "closed",
+        "not_yet" or "ended" or "locked" => reason,
+        _ => "unavailable",
+    };
+
+    internal static SubmitResult PublicResult(SubmitResult result)
+    {
+        switch (result.Outcome)
+        {
+            case "Ok":
+                return result;
+            case "Invalid" when result.Error == "fields":
+                foreach (var key in result.Fields.Keys.ToList())
+                {
+                    result.Fields[key] = result.Fields[key] switch
+                    {
+                        "email_blocked" => "email_rejected",
+                        "phone_taken" or "phone_country" => "phone_rejected",
+                        "invite_invalid" => "invite_invalid",
+                        var other => other,
+                    };
+                }
+
+                return result;
+            case "Closed" or "Blocked" or "RateLimited":
+                return new SubmitResult { Outcome = "Closed", Error = PublicReason(result.Error) };
+            default:
+                // Token expirat, proof-of-work, Turnstile, prea rapid, automatizare: acelasi mesaj.
+                return new SubmitResult { Outcome = "Error", Error = "error" };
+        }
+    }
 
     private Origin Origin() => new(Request.RemoteIp, Country(), Request.UserAgent)
     {

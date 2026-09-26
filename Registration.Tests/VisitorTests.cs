@@ -115,3 +115,35 @@ public class NetworkTests
         public void Log(MediaBrowser.Model.Logging.LogSeverity severity, ReadOnlyMemory<char> message) { }
     }
 }
+
+public class PublicMessageTests
+{
+    [Theory]
+    [InlineData("closed", "closed")]
+    [InlineData("busy", "closed")]
+    [InlineData("full", "closed")]
+    [InlineData("not_yet", "not_yet")]
+    [InlineData("duplicate_network", "unavailable")]
+    [InlineData("signed_in", "unavailable")]
+    [InlineData("network_blocked", "unavailable")]
+    [InlineData("blocked", "unavailable")]
+    [InlineData("rate_limited", "unavailable")]
+    public void ReasonsAreGeneric(string reason, string expected)
+    {
+        Assert.Equal(expected, Registration.Api.PublicService.PublicReason(reason));
+    }
+
+    [Fact]
+    public void ResultsHideTheCheckThatFailed()
+    {
+        var bot = Registration.Api.PublicService.PublicResult(SubmitResult.Fail("Invalid", "bot_check"));
+        Assert.Equal(("Error", "error"), (bot.Outcome, bot.Error));
+        var fast = Registration.Api.PublicService.PublicResult(SubmitResult.Fail("Invalid", "too_fast"));
+        Assert.Equal("error", fast.Error);
+        var limited = Registration.Api.PublicService.PublicResult(new SubmitResult { Outcome = "RateLimited", Error = "rate_limited", RetryAfterSeconds = 60 });
+        Assert.Equal(("Closed", "unavailable", 0), (limited.Outcome, limited.Error, limited.RetryAfterSeconds));
+        var fields = Registration.Api.PublicService.PublicResult(new SubmitResult { Outcome = "Invalid", Error = "fields", Fields = { ["phone"] = "phone_taken", ["email"] = "email_blocked" } });
+        Assert.Equal("phone_rejected", fields.Fields["phone"]);
+        Assert.Equal("email_rejected", fields.Fields["email"]);
+    }
+}
