@@ -488,3 +488,36 @@ input.code-input {
     text-transform: uppercase;
     padding-left: 0.5em;
 }
+
+.suggestions {
+    margin: 8px 0 0;
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+.suggestions .chip {
+    display: inline-block;
+    margin: 4px 6px 0 0;
+    padding: 5px 10px;
+    border: 1px solid var(--field-border);
+    border-radius: 999px;
+    background: var(--field);
+    color: var(--text);
+    font: inherit;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.suggestions .chip:hover,
+.suggestions .chip:focus {
+    border-color: var(--focus);
+}
+
+.pw-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 8px;
+    font-size: 0.9rem;
+}

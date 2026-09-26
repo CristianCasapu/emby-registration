@@ -62,6 +62,7 @@
                 <input id="username" name="username" type="text" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="text" maxlength="32">
                 <span class="status" id="usernameStatus" aria-hidden="true"></span>
             </div>
+            <div class="suggestions hidden" id="usernameSuggestions"><span data-t="available">Disponibile:</span> <span id="suggestionList"></span></div>
             <p class="help" data-t="usernameHelp">Litere mici, cifre și . _ - ; îl vei scrie la fiecare conectare (contul nu apare în lista de pe ecranul de conectare).</p>
             <p class="error" role="alert"></p>
         </div>
@@ -103,6 +104,11 @@
                 <button type="button" class="toggle" data-toggle="password" data-t-label="show">Arată</button>
             </div>
             <div class="meter" aria-hidden="true"><span id="meterBar"></span></div>
+            <div class="pw-actions">
+                <button type="button" class="link" id="generatePassword" data-t="generatePassword">Generează o parolă sigură</button>
+                <button type="button" class="link hidden" id="copyPassword" data-t="copyPassword">Copiază</button>
+            </div>
+            <p class="help hidden" id="generatedHelp" data-t="generatedHelp">Parola a fost completată în ambele câmpuri. Noteaz-o sau salveaz-o în managerul de parole.</p>
             <p class="help" id="passwordHelp"></p>
             <p class="error" role="alert"></p>
         </div>

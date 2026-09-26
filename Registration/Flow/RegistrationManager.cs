@@ -249,9 +249,98 @@ public sealed partial class RegistrationManager
             ?? (UsernameTaken(normalized) ? "username_taken" : null);
     }
 
-    private bool UsernameTaken(string normalized) =>
-        _userManager.GetUserByName(normalized) != null
-        || Store.Read(d => d.Requests.Any(r => RequestStatus.IsWaiting(r.Status) && r.Username == normalized));
+    /// <summary>
+    /// Numele e ocupat daca exista deja (sau e cerut) un nume care difera doar prin . _ -
+    /// sau majuscule: „ana.maria”, „ana_maria” si „AnaMaria” sunt acelasi nume.
+    /// </summary>
+    private bool UsernameTaken(string normalized)
+    {
+        var compact = Validators.CompactUsername(normalized);
+        if (_userManager.GetUserByName(normalized) != null)
+        {
+            return true;
+        }
+
+#pragma warning disable CS0618 // lista completa: cateva zeci de conturi
+        if (_userManager.Users.Any(u => Validators.CompactUsername(u.Name) == compact))
+#pragma warning restore CS0618
+        {
+            return true;
+        }
+
+        return Store.Read(d => d.Requests.Any(r => RequestStatus.IsWaiting(r.Status) && Validators.CompactUsername(r.Username) == compact));
+    }
+
+    /// <summary>
+    /// Pana la 3 nume libere, din numele cerut si din prenume/nume (fara diacritice).
+    /// Aceleasi conditii ca verificarea disponibilitatii (pagina legitima, limita pe adresa).
+    /// </summary>
+    public List<string> SuggestUsernames(string? username, string? firstName, string? lastName, string? formToken, string? device, Origin origin, DateTimeOffset now)
+    {
+        var settings = Settings;
+        if (!origin.IsAdmin)
+        {
+            var key = "check:" + RateLimiter.IpKey(origin.Ip);
+            if (!Limits.Allows(key, 60, TimeSpan.FromMinutes(10), now))
+            {
+                return new List<string>();
+            }
+
+            Limits.Record(key, now);
+            var ip = RateLimiter.Normalize(origin.Ip)?.ToString();
+            if ((settings.RequireSameOrigin && !SameOrigin(origin)) || Tokens.Verify(formToken, origin.Ip, now).Error != null
+                || (settings.RequireAccessCode && PassKind(origin.PassCookie, origin.DeviceCookie ?? device, ip, now) == null))
+            {
+                return new List<string>();
+            }
+        }
+
+        static string Clean(string value) =>
+            new string(Validators.Ascii(value).Select(c => char.IsAsciiLetterOrDigit(c) ? c : '.').ToArray()).Trim('.');
+
+        var baseName = Clean(Validators.NormalizeUsername(username));
+        var first = Clean(firstName ?? string.Empty).Split('.', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
+        var last = Clean(lastName ?? string.Empty).Replace(".", string.Empty);
+
+        var candidates = new List<string>();
+        void Add(string value)
+        {
+            value = System.Text.RegularExpressions.Regex.Replace(value, "[._-]{2,}", ".").Trim('.', '_', '-');
+            if (value.Length > 0 && !candidates.Contains(value))
+            {
+                candidates.Add(value);
+            }
+        }
+
+        if (first.Length > 0 && last.Length > 0)
+        {
+            Add(first + "." + last);
+            Add(first + last);
+            Add(first[0] + last);
+            Add(first + "." + last[0]);
+            Add(last + "." + first);
+        }
+
+        if (baseName.Length > 0)
+        {
+            Add(baseName);
+        }
+
+        var rest = candidates.ToList();
+        foreach (var root in (baseName.Length > 0 ? new[] { baseName } : Array.Empty<string>()).Concat(rest.Take(2)))
+        {
+            for (var i = 0; i < 4; i++)
+            {
+                Add(root + RandomNumberGenerator.GetInt32(2, 100).ToString(CultureInfo.InvariantCulture));
+            }
+        }
+
+        var reserved = Validators.Lines(settings.ReservedUsernames).ToList();
+        return candidates
+            .Where(c => Validators.Username(c, settings.UsernameMinLength, settings.UsernameMaxLength, reserved) == null && !UsernameTaken(c))
+            .Take(3)
+            .ToList();
+    }
 
     // --- Trimiterea formularului -----------------------------------------------------------------
 

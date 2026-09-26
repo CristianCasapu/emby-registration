@@ -40,6 +40,18 @@ public static partial class Validators
     public static string NormalizeUsername(string? value) =>
         (value ?? string.Empty).Trim().Normalize(NormalizationForm.FormKC).ToLowerInvariant();
 
+    /// <summary>Forma de comparat pentru unicitate: fara . _ - („ana.maria” = „anamaria”).</summary>
+    public static string CompactUsername(string? value) =>
+        NormalizeUsername(value).Replace(".", string.Empty).Replace("_", string.Empty).Replace("-", string.Empty);
+
+    /// <summary>Litere fara diacritice, pentru variantele de nume (Ștefan → stefan).</summary>
+    public static string Ascii(string? value)
+    {
+        var text = (value ?? string.Empty).Normalize(NormalizationForm.FormD);
+        return new string(text.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray())
+            .Normalize(NormalizationForm.FormC).ToLowerInvariant();
+    }
+
     public static string? Username(string normalized, int minLength, int maxLength, IEnumerable<string> extraReserved)
     {
         if (normalized.Length < minLength || normalized.Length > maxLength)

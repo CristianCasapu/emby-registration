@@ -32,6 +32,21 @@ public class ValidationTests
         Assert.Equal("admin", Validators.NormalizeUsername("ａｄｍｉｎ"));
     }
 
+    [Theory]
+    [InlineData("ana.maria", "anamaria")]
+    [InlineData("Ana_Maria", "anamaria")]
+    [InlineData("ana-maria", "anamaria")]
+    public void CompactFormIgnoresSeparatorsAndCase(string input, string expected)
+    {
+        Assert.Equal(expected, Validators.CompactUsername(input));
+    }
+
+    [Fact]
+    public void AsciiRemovesDiacritics()
+    {
+        Assert.Equal("stefan tanase", Validators.Ascii("Ștefan Țănase"));
+    }
+
     [Fact]
     public void ExtraReservedNames()
     {

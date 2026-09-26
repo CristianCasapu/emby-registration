@@ -56,6 +56,21 @@ public sealed class CheckUsername : IReturn<bool>
     public string? Device { get; set; }
 }
 
+[Route("/Registration/SuggestUsernames", "POST", Summary = "Nume de utilizator libere, propuse cand cel ales e ocupat")]
+[Unauthenticated]
+public sealed class SuggestUsernames : IReturn<List<string>>
+{
+    public string? Username { get; set; }
+
+    public string? FirstName { get; set; }
+
+    public string? LastName { get; set; }
+
+    public string? Token { get; set; }
+
+    public string? Device { get; set; }
+}
+
 [Route("/Registration/Submit", "POST", Summary = "Trimite o cerere de cont")]
 [Unauthenticated]
 public sealed class SubmitRegistration : SubmitForm, IReturn<SubmitResult>
@@ -351,6 +366,9 @@ public sealed partial class PublicService : IService, IRequiresRequest
         var available = Manager.IsUsernameAvailable(request.Username, request.Token, request.Device, Origin(), DateTimeOffset.UtcNow);
         return _resultFactory.GetResult(Request, (available ? "true" : "false").AsSpan(), "application/json", Headers());
     }
+
+    public object Post(SuggestUsernames request) =>
+        Json(Manager.SuggestUsernames(request.Username, request.FirstName, request.LastName, request.Token, request.Device, Origin(), DateTimeOffset.UtcNow));
 
     public async Task<object> Post(SubmitRegistration request)
     {

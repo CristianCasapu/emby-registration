@@ -49,6 +49,11 @@
             hide: 'Ascunde',
             working: 'Se verifică…',
             checkingName: 'Se verifică numele de utilizator…',
+            available: 'Disponibile:',
+            generatePassword: 'Generează o parolă sigură',
+            copyPassword: 'Copiază',
+            copied: 'Copiat',
+            generatedHelp: 'Parola a fost completată în ambele câmpuri. Noteaz-o sau salveaz-o în managerul de parole.',
             chooseName: 'Alege un nume de utilizator disponibil.',
             waitSeconds: 'Poți trimite formularul în câteva secunde.',
             openEmby: 'Intră în Emby',
@@ -78,11 +83,11 @@
                 email_rejected: 'Adresa nu este acceptată.',
                 phone_invalid: 'Numărul nu pare corect pentru țara aleasă.',
                 phone_rejected: 'Numărul nu este acceptat.',
-                password_short: 'Parola trebuie să aibă cel puțin {min} caractere.',
+                password_short: 'Parola trebuie să aibă cel puțin {min} caractere. Poți genera una mai jos.',
                 password_long: 'Parola este prea lungă (maximum 128 de caractere).',
-                password_weak: 'Parola este prea simplă.',
+                password_weak: 'Parola este prea simplă. Poți genera una mai jos.',
                 password_username: 'Parola nu trebuie să conțină numele de utilizator.',
-                password_pwned: 'Parolă nesigură. Alege alta.',
+                password_pwned: 'Parolă nesigură. Alege alta sau generează una.',
                 password_mismatch: 'Parolele nu coincid.',
                 pin_invalid: 'PIN-ul are exact 4 cifre.',
                 pin_weak: 'PIN-ul este prea simplu (ex. 1111, 1234).',
@@ -144,6 +149,11 @@
             hide: 'Hide',
             working: 'Checking…',
             checkingName: 'Checking the username…',
+            available: 'Available:',
+            generatePassword: 'Generate a strong password',
+            copyPassword: 'Copy',
+            copied: 'Copied',
+            generatedHelp: 'The password was filled in both fields. Write it down or save it in your password manager.',
             chooseName: 'Choose an available username.',
             waitSeconds: 'You can submit the form in a few seconds.',
             openEmby: 'Open Emby',
@@ -173,11 +183,11 @@
                 email_rejected: 'This address is not accepted.',
                 phone_invalid: 'This number does not look right for the selected country.',
                 phone_rejected: 'This number is not accepted.',
-                password_short: 'The password must have at least {min} characters.',
+                password_short: 'The password must have at least {min} characters. You can generate one below.',
                 password_long: 'The password is too long (128 characters at most).',
-                password_weak: 'The password is too simple.',
+                password_weak: 'The password is too simple. You can generate one below.',
                 password_username: 'The password must not contain the username.',
-                password_pwned: 'Unsafe password. Choose another.',
+                password_pwned: 'Unsafe password. Choose another or generate one.',
                 password_mismatch: 'The passwords do not match.',
                 pin_invalid: 'The PIN has exactly 4 digits.',
                 pin_weak: 'The PIN is too simple (e.g. 1111, 1234).',
@@ -690,6 +700,95 @@
         }
     }
 
+    // Variante libere, confirmate de server, cand numele ales e ocupat.
+    function suggestUsernames(value, seq) {
+        api('SuggestUsernames', {
+            Username: value, FirstName: $('firstName').value.trim(), LastName: $('lastName').value.trim(),
+            Token: info && info.Token, Device: storedDevice()
+        }).then(function (list) {
+            if (seq !== usernameSeq || !Array.isArray(list) || !list.length) { return; }
+            var holder = $('suggestionList');
+            while (holder.firstChild) { holder.removeChild(holder.firstChild); }
+            list.forEach(function (name) {
+                var chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'chip';
+                chip.textContent = name;
+                chip.addEventListener('click', function () {
+                    $('username').value = name;
+                    hideSuggestions();
+                    saveDraft();
+                    checkUsername();
+                });
+                holder.appendChild(chip);
+            });
+            $('usernameSuggestions').classList.remove('hidden');
+        }, function () { /* fara sugestii */ });
+    }
+
+    function hideSuggestions() {
+        $('usernameSuggestions').classList.add('hidden');
+    }
+
+    // Parola generata in browser (crypto.getRandomValues), conforma cu lungimea minima din setari:
+    // grupuri de 4 caractere fara cele care se confunda, cu litere mari, mici si cifre.
+    function generatePassword() {
+        var lower = 'abcdefghjkmnpqrstuvwxyz', upper = 'ABCDEFGHJKMNPQRSTUVWXYZ', digits = '23456789';
+        var all = lower + upper + digits;
+        var min = Math.max(12, (info && info.PasswordMinLength) || 10);
+        var groups = Math.ceil((min + 1) / 5);
+        var user = $('username').value.trim().toLowerCase();
+        function pick(set) {
+            var buf = new Uint32Array(1);
+            window.crypto.getRandomValues(buf);
+            return set.charAt(buf[0] % set.length);
+        }
+        for (var attempt = 0; attempt < 20; attempt++) {
+            var parts = [];
+            for (var g = 0; g < groups; g++) {
+                var part = '';
+                for (var i = 0; i < 4; i++) { part += pick(all); }
+                parts.push(part);
+            }
+            // Cel putin o litera mare, una mica si o cifra.
+            parts[0] = pick(upper) + parts[0].slice(1);
+            parts[1] = pick(digits) + parts[1].slice(1);
+            parts[groups - 1] = parts[groups - 1].slice(0, 3) + pick(lower);
+            var password = parts.join('-');
+            if (password.length >= min && new Set(password).size >= 6 && (user.length < 3 || password.toLowerCase().indexOf(user) < 0)) {
+                return password;
+            }
+        }
+        return password;
+    }
+
+    function useGeneratedPassword() {
+        var password = generatePassword();
+        ['password', 'password2'].forEach(function (id) {
+            $(id).value = password;
+            $(id).type = 'text';
+            touched[id] = true;
+        });
+        document.querySelectorAll('[data-toggle]').forEach(function (btn) { btn.textContent = t('hide'); });
+        validateField('password');
+        validateField('password2');
+        $('meterBar').className = 's' + strength(password);
+        $('copyPassword').classList.remove('hidden');
+        $('copyPassword').textContent = t('copyPassword');
+        $('generatedHelp').classList.remove('hidden');
+    }
+
+    function copyPassword() {
+        var text = $('password').value;
+        var done = function () { $('copyPassword').textContent = t('copied'); };
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(done, function () { $('password').select(); });
+        } else {
+            $('password').select();
+            try { document.execCommand('copy'); done(); } catch (e) { /* selectat pentru copiere manuala */ }
+        }
+    }
+
     function checkUsername() {
         var box = document.querySelector('[data-field="username"]');
         var status = $('usernameStatus');
@@ -721,6 +820,7 @@
                 status.textContent = '✕';
                 box.dataset.serverError = 'username_unavailable';
                 setError('username', 'username_unavailable');
+                suggestUsernames(value, seq);
             }
             updateSubmit();
         }).catch(function () {
@@ -873,6 +973,7 @@
                     usernameState = 'bad';
                     $('usernameStatus').className = 'status bad';
                     $('usernameStatus').textContent = '✕';
+                    suggestUsernames($('username').value.trim().toLowerCase(), usernameSeq);
                 }
                 setError(field, result.Fields[field]);
             });
@@ -1053,6 +1154,7 @@
                 try { el.setSelectionRange(pos, pos); } catch (e) { /* */ }
             }
             clearTimeout(usernameTimer);
+            hideSuggestions();
             usernameState = 'checking';
             updateSubmit();
             usernameTimer = setTimeout(checkUsername, 500);
@@ -1105,6 +1207,12 @@
         });
 
         $('form').addEventListener('submit', onSubmit);
+        $('generatePassword').addEventListener('click', useGeneratedPassword);
+        $('copyPassword').addEventListener('click', copyPassword);
+        $('password').addEventListener('input', function () {
+            $('generatedHelp').classList.add('hidden');
+            $('copyPassword').classList.add('hidden');
+        });
         $('locked').addEventListener('submit', onUnlock);
         $('code').addEventListener('input', function () {
             var el = $('code');
