@@ -155,8 +155,13 @@ public sealed class GitHubUpdater
                 return error;
             }
 
-            File.Copy(_plugin.AssemblyPath, BackupPath, overwrite: true);
-            File.WriteAllText(BackupPath + ".version", Format(_plugin.Version));
+            // Rezerva e versiunea care ruleaza; daca s-a mai instalat una fara repornire, DLL-ul de
+            // pe disc nu mai e cel incarcat si rezerva existenta ramane.
+            if (_status.InstalledPendingRestart == null)
+            {
+                File.Copy(_plugin.AssemblyPath, BackupPath, overwrite: true);
+                File.WriteAllText(BackupPath + ".version", Format(_plugin.Version));
+            }
             Replace(dll);
 
             _status.InstalledPendingRestart = Format(release.Version);
