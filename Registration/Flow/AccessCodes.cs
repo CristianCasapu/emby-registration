@@ -87,7 +87,7 @@ public sealed partial class RegistrationManager
     }
 
     /// <summary>Semnele „aceeasi adresa/retea”: nu se aplica pentru codul de familie.</summary>
-    internal static bool IsNetworkSignal(string code) => code is "same_ip" or "same_subnet" or "existing_ip" or "fingerprint_subnet";
+    public static bool IsNetworkSignal(string code) => code is "same_ip" or "same_subnet" or "existing_ip" or "fingerprint_subnet";
 
     internal static string NormalizeCode(string? code) =>
         new string((code ?? string.Empty).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c) && c != '-').ToArray());

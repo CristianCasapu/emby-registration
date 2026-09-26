@@ -264,7 +264,9 @@ public sealed partial class PublicService : IService, IRequiresRequest
         {
             var network = manager.Network(origin);
             closed = admin ? null : manager.GateVisitor(origin, network);
-            var needsCode = !admin && settings.RequireAccessCode && !manager.HasPass(origin.PassCookie, device, RateLimiter.Normalize(origin.Ip)?.ToString(), now);
+            var passKind = manager.PassKind(origin.PassCookie, device, RateLimiter.Normalize(origin.Ip)?.ToString(), now);
+            var needsCode = !admin && settings.RequireAccessCode && passKind == null;
+            var family = settings.RequireAccessCode && passKind == "family";
             if (closed == null && !needsCode && !admin)
             {
                 var evidence = new DeviceEvidence
@@ -272,7 +274,8 @@ public sealed partial class PublicService : IService, IRequiresRequest
                     Device = device,
                     EmbyUsers = (request.Users ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                 };
-                var duplicate = manager.FindDuplicates(evidence, origin, network, null, now).FirstOrDefault(x => x.Action == DuplicateActions.Block);
+                var duplicate = manager.FindDuplicates(evidence, origin, network, null, now)
+                    .FirstOrDefault(x => x.Action == DuplicateActions.Block && !(family && RegistrationManager.IsNetworkSignal(x.Code)));
                 if (duplicate != null)
                 {
                     closed = RegistrationManager.BlockReason(duplicate);
