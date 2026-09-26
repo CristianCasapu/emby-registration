@@ -43,6 +43,7 @@ Jurnal de progres (se completează pe parcurs):
 | 2026-09-25 | 100c699 | Publicat pe GitHub (public) |
 | 2026-09-25 | v0.9.0 | Primul release (pre-release), publicat de GitHub Actions, semnătură verificată |
 | 2026-09-25 | v1.0.0 | Release 1.0.0, instalat pe server prin actualizarea din plugin |
+| 2026-09-26 | v1.2.0 | Înregistrare deschisă (aprobare manuală), biblioteci Filme + Seriale (Copii e în Filme), buton de login instalat |
 | 2026-09-25 | — | Deploy pe server; corectat: configurația nu se poate salva în constructorul plugin-ului; test e2e complet trecut |
 
 ### Descoperiri din spike (Emby 4.9.5)
