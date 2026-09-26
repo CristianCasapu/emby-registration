@@ -729,6 +729,12 @@ public sealed partial class RegistrationManager
         policy.IsDisabled = false;
         Guard?.Update(user, policy);
 
+        // Alte plugin-uri (ex. Headend) modifica politica in primele secunde de viata ale contului.
+        if (now - user.DateCreated < TimeSpan.FromSeconds(30))
+        {
+            Guard?.ReapplyLater(user.InternalId);
+        }
+
         record = Find(id)!;
         SendToUser(record, Texts.Approved(record.Language, ServerName(DefaultServerName), record.FirstName, record.Username, PublicUrlOrNull()));
         Notifier.Notify(NotifyEvents.Decision, $"Înregistrare: {record.Username} aprobat", $"Aprobat de {admin}. " + Describe(record));

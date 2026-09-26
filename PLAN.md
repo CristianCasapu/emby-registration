@@ -47,6 +47,7 @@ Jurnal de progres (se completează pe parcurs):
 | 2026-09-25 | 100c699 | Publicat pe GitHub (public) |
 | 2026-09-25 | v0.9.0 | Primul release (pre-release), publicat de GitHub Actions, semnătură verificată |
 | 2026-09-25 | v1.0.0 | Release 1.0.0, instalat pe server prin actualizarea din plugin |
+| 2026-09-26 | v1.6.2 | Live TV pornit pentru conturile noi (canalele pentru adulți rămân blocate de Headend); reaplicare la aprobare rapidă |
 | 2026-09-26 | v1.6.0 | Cod de familie static (nu se consumă, fără reguli de adresă comună) |
 | 2026-09-26 | v1.5.0 | Mod administrator pentru teste |
 | 2026-09-26 | v1.4.3 | Buton de login pentru toți, pagina de cod prima, mesaje publice scurte și generice (motivul doar în panou) |
