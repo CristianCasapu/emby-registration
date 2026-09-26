@@ -141,7 +141,7 @@ public sealed partial class RegistrationManager
         var deviceId = Devices.Verify(evidence.Device);
         var deviceHash = deviceId == null ? null : Devices.Hash(deviceId);
         var records = Store.Read(d => d.Requests
-            .Where(r => r.Status != RequestStatus.Deleted && (r.Status != RequestStatus.Expired || now - r.CreatedAt < TimeSpan.FromDays(1)))
+            .Where(r => r.Status != RequestStatus.Deleted && r.TestBy == null && (r.Status != RequestStatus.Expired || now - r.CreatedAt < TimeSpan.FromDays(1)))
             .Select(r => (r.Id, r.Username, r.Status, r.CreatedAt, r.Ip, r.Subnet, r.DeviceHash, r.Fingerprint, r.Phone))
             .ToList());
 

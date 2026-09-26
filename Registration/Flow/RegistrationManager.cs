@@ -81,6 +81,14 @@ public sealed record Origin(IPAddress? Ip, string? IpCountry, string? UserAgent)
 
     /// <summary>Dovada codului de acces corect (cookie).</summary>
     public string? PassCookie { get; init; }
+
+    /// <summary>
+    /// Administrator Emby conectat in acelasi browser (sesiune verificata de server): pentru
+    /// teste ocoleste codul, regulile de cont dublu, reteaua si limitele.
+    /// </summary>
+    public string? AdminName { get; init; }
+
+    public bool IsAdmin => AdminName != null;
 }
 
 public sealed class SubmitResult
@@ -224,13 +232,14 @@ public sealed partial class RegistrationManager
         var settings = Settings;
         var now = DateTimeOffset.UtcNow;
 
-        var closed = ClosedReason(now);
+        var admin = origin.IsAdmin;
+        var closed = admin ? null : ClosedReason(now);
         if (closed != null)
         {
             return SubmitResult.Fail("Closed", closed);
         }
 
-        if (new IpList(Validators.Lines(settings.BlockedIps)).Contains(origin.Ip))
+        if (!admin && new IpList(Validators.Lines(settings.BlockedIps)).Contains(origin.Ip))
         {
             Store.Count("blocked_ip", now);
             return SubmitResult.Fail("Blocked", "blocked");
@@ -243,7 +252,7 @@ public sealed partial class RegistrationManager
             : !Limits.Allows(netKey, settings.MaxPerSubnetPerDay, Day, now) ? (netKey, Day)
             : !Limits.Allows("global", settings.MaxGlobalPerHour, Hour, now) ? ("global", Hour)
             : ((string, TimeSpan)?)null;
-        if (limited != null)
+        if (limited != null && !admin)
         {
             Store.Count("rate_limited", now);
             if (Limits.Count("abuse-notified:" + netKey, Day, now) == 0)
@@ -272,7 +281,7 @@ public sealed partial class RegistrationManager
         }
 
         var network = Network(origin);
-        var gate = GateVisitor(origin, network);
+        var gate = admin ? null : GateVisitor(origin, network);
         if (gate != null)
         {
             Store.Count(gate, now);
@@ -281,12 +290,12 @@ public sealed partial class RegistrationManager
 
         var visitorIp = RateLimiter.Normalize(origin.Ip)?.ToString();
         var visitorDevice = origin.DeviceCookie ?? form.Device;
-        if (ActiveBlock(visitorIp, DeviceHashOf(visitorDevice), now) != null)
+        if (!admin && ActiveBlock(visitorIp, DeviceHashOf(visitorDevice), now) != null)
         {
             return SubmitResult.Fail("Blocked", "blocked");
         }
 
-        if (settings.RequireAccessCode && !HasPass(origin.PassCookie, visitorDevice, visitorIp, now))
+        if (!admin && settings.RequireAccessCode && !HasPass(origin.PassCookie, visitorDevice, visitorIp, now))
         {
             Store.Count("bot_locked", now);
             return SubmitResult.Fail("Closed", "locked");
@@ -318,21 +327,21 @@ public sealed partial class RegistrationManager
             return SubmitResult.Fail("Invalid", "bot_check");
         }
 
-        if (!string.IsNullOrWhiteSpace(settings.TurnstileSecretKey)
+        if (!admin && !string.IsNullOrWhiteSpace(settings.TurnstileSecretKey)
             && !await Web.VerifyTurnstileAsync(settings.TurnstileSecretKey.Trim(), form.Turnstile, origin.Ip, cancellationToken).ConfigureAwait(false))
         {
             Store.Count("bot_turnstile", now);
             return SubmitResult.Fail("Invalid", "bot_check");
         }
 
-        if (settings.BlockAutomation && !string.IsNullOrEmpty(form.Automation))
+        if (!admin && settings.BlockAutomation && !string.IsNullOrEmpty(form.Automation))
         {
             Store.Count("bot_automation", now);
             _logger.Info("Inregistrare: browser automatizat refuzat ({0}) de la {1}", form.Automation, origin.Ip);
             return SubmitResult.Fail("Invalid", "bot_check");
         }
 
-        if (settings.RequireInteraction && (form.Inputs < 6 || form.Gestures < 1))
+        if (!admin && settings.RequireInteraction && (form.Inputs < 6 || form.Gestures < 1))
         {
             Store.Count("bot_interaction", now);
             return SubmitResult.Fail("Invalid", "bot_check");
@@ -345,7 +354,7 @@ public sealed partial class RegistrationManager
             Fingerprint = CleanFingerprint(form.Fingerprint),
             EmbyUsers = form.EmbyUsers ?? Array.Empty<string>(),
         };
-        var signals = FindDuplicates(evidence, origin, network, input.Phone, now);
+        var signals = admin ? new List<DuplicateSignal>() : FindDuplicates(evidence, origin, network, input.Phone, now);
         var block = signals.FirstOrDefault(x => x.Action == DuplicateActions.Block);
         if (block != null)
         {
@@ -539,7 +548,13 @@ public sealed partial class RegistrationManager
             NetworkName = network.Organization,
             NetworkKind = network.Kind,
             Flags = signals.Where(x => x.Action == DuplicateActions.Flag).Select(x => x.Detail).ToList(),
+            TestBy = origin.AdminName,
         };
+
+        if (record.TestBy != null)
+        {
+            record.Flags.Insert(0, $"cerere de test făcută de administratorul {record.TestBy}");
+        }
 
         if (confirmEmail)
         {

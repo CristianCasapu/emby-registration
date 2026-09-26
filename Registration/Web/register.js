@@ -23,6 +23,7 @@
             introAutomatic: 'Completează formularul și contul tău va fi creat imediat.',
             introInvite: 'Ai nevoie de un cod de invitație de la administrator. Contul devine activ după aprobare.',
             introConfirm: ' Întâi îți vom trimite un e-mail ca să confirmi adresa.',
+            adminMode: 'Mod administrator (test): codul și verificările sunt ocolite. ',
             username: 'Nume de utilizator',
             usernameHelp: 'Litere mici, cifre și . _ - ; îl vei scrie la fiecare conectare (contul nu apare în lista de pe ecranul de conectare).',
             firstName: 'Prenume',
@@ -116,6 +117,7 @@
             introAutomatic: 'Fill in the form and your account will be created right away.',
             introInvite: 'You need an invitation code from the administrator. Your account becomes active after approval.',
             introConfirm: ' First, we will email you to confirm your address.',
+            adminMode: 'Administrator mode (test): the code and checks are skipped. ',
             username: 'Username',
             usernameHelp: 'Lowercase letters, digits and . _ - ; you will type it every time you sign in (the account is not listed on the sign-in screen).',
             firstName: 'First name',
@@ -317,8 +319,26 @@
 
     // --- Comunicare cu serverul --------------------------------------------------------------
 
+    // Sesiunea Emby din acest browser, daca exista (serverul o accepta doar pentru administratori).
+    function embyToken() {
+        try {
+            var servers = (JSON.parse(localStorage.getItem('servercredentials3') || '{}').Servers || []).map(function (s) {
+                var current = (s.Users || []).filter(function (u) { return u && u.UserId === s.UserId && u.AccessToken; })[0];
+                return { token: (current && current.AccessToken) || s.AccessToken, addresses: [s.ManualAddress, s.RemoteAddress, s.LocalAddress] };
+            }).filter(function (s) { return s.token; });
+            var here = servers.filter(function (s) {
+                return s.addresses.some(function (a) { return a && a.indexOf(location.host) >= 0; });
+            });
+            return ((here[0] || servers[0]) || {}).token || '';
+        } catch (e) {
+            return '';
+        }
+    }
+
     function api(path, body) {
         var options = { method: body ? 'POST' : 'GET', headers: { Accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store' };
+        var token = embyToken();
+        if (token) { options.headers['X-Emby-Token'] = token; }
         if (body) {
             options.headers['Content-Type'] = 'application/json';
             options.body = JSON.stringify(body);
@@ -410,6 +430,7 @@
     function fillForm() {
         var intro = info.Mode === 'Automatic' ? t('introAutomatic') : info.Mode === 'InviteOnly' ? t('introInvite') : t('introApproval');
         if (info.EmailConfirmation) { intro += t('introConfirm'); }
+        if (info.Admin) { intro = t('adminMode') + intro; }
         $('intro').textContent = intro;
         $('serverName').textContent = info.ServerName || '';
         $('pinField').classList.toggle('hidden', !info.PinEnabled);

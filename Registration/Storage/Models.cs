@@ -91,6 +91,9 @@ public sealed class RegistrationRecord
     /// <summary>residential, warp, local, unknown (centrele de date si Tor sunt refuzate).</summary>
     public string? NetworkKind { get; set; }
 
+    /// <summary>Administratorul care a facut cererea pentru test (nu conteaza la regulile de cont dublu).</summary>
+    public string? TestBy { get; set; }
+
     /// <summary>Semne de cont dublu, semnalate adminului (nu blocate).</summary>
     public List<string> Flags { get; set; } = new();
 

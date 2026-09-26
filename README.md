@@ -58,6 +58,10 @@ Opțional, formularul se deschide doar cu un cod dat de administrator (Înregist
 - după 2 coduri greșite se blochează 24 de ore, separat, adresa IP și dispozitivul; deblocare din același tab;
 - codul se copiază sau se trimite pe WhatsApp direct din panou.
 
+## Test ca administrator
+
+Un administrator Emby conectat la interfața web în același browser (aceeași adresă) primește formularul direct, fără cod, fără regulile de cont dublu, rețea și limite; codul nu se consumă. Pagina trimite sesiunea Emby din browser, iar serverul o acceptă doar dacă aparține unui administrator activ. Cererile făcute așa sunt marcate „cerere de test” și nu contează la regulile de cont dublu.
+
 ## Protecție anti-roboți și securitate
 
 | Strat | Ce face |

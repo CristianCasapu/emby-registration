@@ -1,4 +1,5 @@
 using System.Net;
+using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Net;
 using MediaBrowser.Model.Services;
 using Registration.Flow;
@@ -87,6 +88,9 @@ public sealed class RegistrationInfo
     /// <summary>Formularul cere intai codul de acces.</summary>
     public bool Locked { get; set; }
 
+    /// <summary>Administrator conectat: verificarile sunt ocolite (test).</summary>
+    public bool Admin { get; set; }
+
     public int CodeLength { get; set; }
 
     /// <summary>La „blocked”: pana cand.</summary>
@@ -166,9 +170,14 @@ public sealed partial class PublicService : IService, IRequiresRequest
     [System.Text.RegularExpressions.GeneratedRegex(@"^[ \t]*//[^\n]*\n", System.Text.RegularExpressions.RegexOptions.Multiline)]
     private static partial System.Text.RegularExpressions.Regex CommentLines();
 
-    public PublicService(IHttpResultFactory resultFactory)
+    private readonly IAuthorizationContext _authorization;
+    private readonly IUserManager _userManager;
+
+    public PublicService(IHttpResultFactory resultFactory, IAuthorizationContext authorization, IUserManager userManager)
     {
         _resultFactory = resultFactory;
+        _authorization = authorization;
+        _userManager = userManager;
     }
 
     public IRequest Request { get; set; } = null!;
@@ -237,14 +246,15 @@ public sealed partial class PublicService : IService, IRequiresRequest
         string? closed = null;
         string? detail = null;
         var infoKey = "info:" + RateLimiter.IpKey(origin.Ip);
-        if (!manager.Limits.Allows(infoKey, 60, TimeSpan.FromMinutes(10), now))
+        var admin = origin.IsAdmin;
+        if (!admin && !manager.Limits.Allows(infoKey, 60, TimeSpan.FromMinutes(10), now))
         {
             closed = "rate_limited";
         }
 
         manager.Limits.Record(infoKey, now);
-        closed ??= manager.ClosedReason(now);
-        var block = closed == null ? manager.ActiveBlock(RateLimiter.Normalize(origin.Ip)?.ToString(), manager.DeviceHashOf(device), now) : null;
+        closed ??= admin ? null : manager.ClosedReason(now);
+        var block = closed == null && !admin ? manager.ActiveBlock(RateLimiter.Normalize(origin.Ip)?.ToString(), manager.DeviceHashOf(device), now) : null;
         if (block != null)
         {
             closed = "blocked";
@@ -253,9 +263,9 @@ public sealed partial class PublicService : IService, IRequiresRequest
         if (closed == null)
         {
             var network = manager.Network(origin);
-            closed = manager.GateVisitor(origin, network);
-            var needsCode = settings.RequireAccessCode && !manager.HasPass(origin.PassCookie, device, RateLimiter.Normalize(origin.Ip)?.ToString(), now);
-            if (closed == null && !needsCode)
+            closed = admin ? null : manager.GateVisitor(origin, network);
+            var needsCode = !admin && settings.RequireAccessCode && !manager.HasPass(origin.PassCookie, device, RateLimiter.Normalize(origin.Ip)?.ToString(), now);
+            if (closed == null && !needsCode && !admin)
             {
                 var evidence = new DeviceEvidence
                 {
@@ -291,7 +301,8 @@ public sealed partial class PublicService : IService, IRequiresRequest
             return _resultFactory.GetResult(Request, info, headers);
         }
 
-        if (settings.RequireAccessCode && !manager.HasPass(origin.PassCookie, device, RateLimiter.Normalize(origin.Ip)?.ToString(), now))
+        info.Admin = admin;
+        if (!admin && settings.RequireAccessCode && !manager.HasPass(origin.PassCookie, device, RateLimiter.Normalize(origin.Ip)?.ToString(), now))
         {
             info.Locked = true;
             info.CodeLength = RegistrationManager.CodeLength;
@@ -409,12 +420,41 @@ public sealed partial class PublicService : IService, IRequiresRequest
 
     private Origin Origin() => new(Request.RemoteIp, Country(), Request.UserAgent)
     {
+        AdminName = AdminName(),
         OriginHeader = RawHeader("Origin"),
         Host = RawHeader("Host"),
         FetchSite = RawHeader("Sec-Fetch-Site")?.ToLowerInvariant(),
         DeviceCookie = DeviceIdentity.FromCookieHeader(RawHeader("Cookie")),
         PassCookie = DeviceIdentity.Cookie(RawHeader("Cookie"), RegistrationManager.PassCookieName),
     };
+
+    /// <summary>
+    /// Numele administratorului, daca cererea poarta sesiunea Emby a unui administrator activ
+    /// (tokenul din stocarea interfetei web, trimis de pagina). Tokenul e verificat de Emby.
+    /// </summary>
+    private string? AdminName()
+    {
+        if (string.IsNullOrEmpty(RawHeader("X-Emby-Token")))
+        {
+            return null;
+        }
+
+        try
+        {
+            var user = _authorization.GetAuthorizationInfo(Request)?.User;
+            if (user == null)
+            {
+                return null;
+            }
+
+            var policy = _userManager.GetUserPolicy(user);
+            return policy.IsAdministrator && !policy.IsDisabled ? user.Name : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
 
     private string? RawHeader(string name)
     {
