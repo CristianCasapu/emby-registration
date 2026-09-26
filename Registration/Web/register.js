@@ -878,7 +878,7 @@
         var button = $('unlock');
         button.disabled = true;
         button.querySelector('.busy').classList.remove('hidden');
-        api('Unlock', { Code: code, Device: storedDevice() }).then(function (result) {
+        api('Unlock', { Code: code, Device: storedDevice(), Users: embyUsers() }).then(function (result) {
             if (result.Ok) {
                 return loadInfo().then(startForm);
             }
@@ -888,6 +888,7 @@
                 setError('code', result.AttemptsLeft === 1 ? 'wrong_code_last' : 'wrong_code', { left: result.AttemptsLeft });
                 $('code').select();
             } else {
+                if (result.Detail) { info.ClosedDetail = result.Detail; }
                 showClosed(result.Error || 'rate_limited');
             }
         }, function () {

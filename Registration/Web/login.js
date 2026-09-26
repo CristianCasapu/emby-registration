@@ -18,9 +18,9 @@
             return Promise.resolve(state.open);
         }
         if (!state.pending) {
-            state.pending = fetch(new URL('Info', base), { credentials: 'omit', cache: 'no-store' })
-                .then(function (r) { return r.ok ? r.json() : { Open: false }; })
-                .then(function (info) { state.open = !!info.Open; })
+            state.pending = fetch(new URL('Status', base), { credentials: 'omit', cache: 'no-store' })
+                .then(function (r) { return r.ok ? r.json() : { Enabled: false }; })
+                .then(function (status) { state.open = !!status.Enabled; })
                 .catch(function () { state.open = false; })
                 .then(function () { state.checked = Date.now(); state.pending = null; return state.open; });
         }

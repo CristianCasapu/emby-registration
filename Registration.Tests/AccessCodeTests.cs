@@ -100,6 +100,21 @@ public sealed class AccessCodeTests : IDisposable
     }
 
     [Fact]
+    public void CorrectCodeIsNotConsumedForSomeoneWhoAlreadyRequested()
+    {
+        var device = _manager.Devices.Issue();
+        var hash = _manager.DeviceHashOf(device);
+        _manager.Store.Write(d => d.Requests.Add(new RegistrationRecord { Id = "r1", Username = "ana", Status = RequestStatus.Approved, CreatedAt = Now, DeviceHash = hash }));
+        var code = _manager.CurrentCode(Now).Code;
+
+        var result = _manager.TryUnlock(code, From("203.0.113.30"), device, Now);
+        Assert.False(result.Ok);
+        Assert.Equal("duplicate_device", result.Error);
+        Assert.Equal(code, _manager.CurrentCode(Now).Code);
+        Assert.Empty(_manager.Store.Read(d => d.Blocks.ToList()));
+    }
+
+    [Fact]
     public void NormalizesInput()
     {
         Assert.Equal("AC3F7", RegistrationManager.NormalizeCode(" ac3-f7 "));

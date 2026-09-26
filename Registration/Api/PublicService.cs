@@ -21,6 +21,17 @@ public sealed class GetRegistrationAsset : IReturn<string>
     public string Name { get; set; } = string.Empty;
 }
 
+[Route("/Registration/Status", "GET", Summary = "Daca inregistrarea e deschisa (pentru butonul de pe ecranul de conectare)")]
+[Unauthenticated]
+public sealed class GetRegistrationStatus : IReturn<RegistrationStatus>
+{
+}
+
+public sealed class RegistrationStatus
+{
+    public bool Enabled { get; set; }
+}
+
 [Route("/Registration/Info", "GET", Summary = "Starea formularului, campurile si tokenul pentru o cerere noua")]
 [Unauthenticated]
 public sealed class GetRegistrationInfo : IReturn<RegistrationInfo>
@@ -52,6 +63,9 @@ public sealed class UnlockRegistration : IReturn<UnlockResult>
     public string? Code { get; set; }
 
     public string? Device { get; set; }
+
+    /// <summary>Conturile Emby conectate in browser (ca la Info).</summary>
+    public string[]? Users { get; set; }
 }
 
 [Route("/Registration/ConfirmEmail", "POST", Summary = "Confirma adresa de e-mail dintr-o cerere")]
@@ -188,6 +202,13 @@ public sealed class PublicService : IService, IRequiresRequest
         return _resultFactory.GetResult(Request, reader.ReadToEnd().AsSpan(), contentType, Headers());
     }
 
+    /// <summary>
+    /// Starea generala, fara verificarile pe vizitator: butonul de pe ecranul de conectare
+    /// apare pentru oricine cat timp inregistrarea e deschisa; pagina explica restul.
+    /// </summary>
+    public object Get(GetRegistrationStatus request) =>
+        Json(new RegistrationStatus { Enabled = Manager.ClosedReason(DateTimeOffset.UtcNow) == null });
+
     public object Get(GetRegistrationInfo request)
     {
         var manager = Manager;
@@ -223,7 +244,8 @@ public sealed class PublicService : IService, IRequiresRequest
         {
             var network = manager.Network(origin);
             closed = manager.GateVisitor(origin, network);
-            if (closed == null)
+            var needsCode = settings.RequireAccessCode && !manager.HasPass(origin.PassCookie, device, RateLimiter.Normalize(origin.Ip)?.ToString(), now);
+            if (closed == null && !needsCode)
             {
                 var evidence = new DeviceEvidence
                 {
@@ -322,7 +344,7 @@ public sealed class PublicService : IService, IRequiresRequest
         }
 
         var device = origin.DeviceCookie ?? request.Device;
-        var result = manager.TryUnlock(request.Code, origin, device, now);
+        var result = manager.TryUnlock(request.Code, origin, device, now, request.Users ?? Array.Empty<string>(), network);
         if (result.Ok && result.Pass != null)
         {
             var secure = Request.IsSecureConnection || string.Equals(Request.XForwardedProtocol, "https", StringComparison.OrdinalIgnoreCase)

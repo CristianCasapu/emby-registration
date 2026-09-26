@@ -18,8 +18,11 @@ public sealed class UnlockResult
 
     public DateTimeOffset? BlockedUntil { get; set; }
 
-    /// <summary>wrong_code, blocked, rate_limited, no_code.</summary>
+    /// <summary>wrong_code, blocked, rate_limited sau motivul de cont dublu (duplicate_device, duplicate_network, signed_in).</summary>
     public string? Error { get; set; }
+
+    /// <summary>La signed_in: contul cu care browserul e conectat.</summary>
+    public string? Detail { get; set; }
 }
 
 /// <summary>
@@ -87,6 +90,9 @@ public sealed partial class RegistrationManager
     public string? DeviceHashOf(string? device) => Devices.Verify(device) is { } id ? Devices.Hash(id) : null;
 
     public UnlockResult TryUnlock(string? code, Origin origin, string? device, DateTimeOffset now)
+        => TryUnlock(code, origin, device, now, Array.Empty<string>(), null);
+
+    public UnlockResult TryUnlock(string? code, Origin origin, string? device, DateTimeOffset now, string[] embyUsers, Registration.Network.NetworkInfo? network)
     {
         var settings = Settings;
         var ip = RateLimiter.Normalize(origin.Ip)?.ToString() ?? "-";
@@ -111,6 +117,19 @@ public sealed partial class RegistrationManager
 
         if (correct)
         {
+            // Codul corect nu se consuma pentru cineva care oricum nu poate cere cont (are deja unul).
+            var duplicate = FindDuplicates(new DeviceEvidence { Device = device, EmbyUsers = embyUsers }, origin, network ?? Network(origin), null, now)
+                .FirstOrDefault(x => x.Action == DuplicateActions.Block);
+            if (duplicate != null)
+            {
+                Store.Count("dup_" + duplicate.Code, now);
+                return new UnlockResult
+                {
+                    Error = BlockReason(duplicate),
+                    Detail = duplicate.Code == "signed_in" ? duplicate.Detail[(duplicate.Detail.LastIndexOf(' ') + 1)..] : null,
+                };
+            }
+
             Store.Write(d =>
             {
                 var use = d.CodeHistory.FirstOrDefault(c => c.Code == current);
