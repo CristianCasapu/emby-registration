@@ -29,7 +29,8 @@ Legendă: ⬜ neînceput · 🟨 în lucru · ✅ gata · ⛔ blocat · ❓ așt
 | 10 | Dezinstalare curată + export/ștergere date (GDPR) | ✅ | |
 | 11 | Teste (unitare + UI headless) | ✅ | 81 unitare; `reg-ui.js` (pagina publică), `reg-e2e.js` (35 verificări pe Emby real), `reg-admin.js` (panou) |
 | 12 | Documentație (README RO/EN), prima versiune `v1.0.0` | ✅ | v1.0.0 publicat |
-| 14 | Trimite datele de acces (text, copiere, e-mail, WhatsApp, Telegram, SMS, partajare) | 🟨 | Cerută 2026-09-25; parolă nouă generată/scrisă sau fără parolă |
+| 14 | Trimite datele de acces (text, copiere, e-mail, WhatsApp, Telegram, SMS, partajare) | ✅ | Cerută 2026-09-25; parolă nouă generată/scrisă sau fără parolă |
+| 15 | Buton „Creează cont nou” pe ecranul de conectare (web) | ✅ | `tools/install-login-button.sh`; aplicațiile native nu pot fi modificate |
 | 13 | Deploy pe poweredge | ✅ | Instalat 2026-09-25; înregistrarea rămâne închisă până o deschide adminul |
 
 Jurnal de progres (se completează pe parcurs):

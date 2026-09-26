@@ -972,6 +972,11 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
         } else if (name === 'maintenance') {
             loadStats(instance);
         } else if (name === 'general') {
+            api('GET', 'Registration/Admin/LoginButton').then(function (r) {
+                var box = view.querySelector('.loginButtonState');
+                box.textContent = r.Ok ? 'instalat' : 'neinstalat';
+                box.className = 'loginButtonState ' + (r.Ok ? '' : 'rg-error');
+            });
             api('GET', 'Registration/Admin/LoginNotice').then(function (r) {
                 view.querySelector('.noticeState').textContent = r.Text ? 'Afișat acum: „' + r.Text + '”' : 'Nimic afișat de plugin.';
                 if (r.Text) { view.querySelector('.txtLoginNotice').value = r.Text; }

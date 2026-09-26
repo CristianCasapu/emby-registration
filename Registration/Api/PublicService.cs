@@ -112,6 +112,7 @@ public sealed class PublicService : IService, IRequiresRequest
         ["register.css"] = "text/css; charset=utf-8",
         ["register.js"] = "text/javascript; charset=utf-8",
         ["pow.js"] = "text/javascript; charset=utf-8",
+        ["login.js"] = "text/javascript; charset=utf-8",
     };
 
     private readonly IHttpResultFactory _resultFactory;

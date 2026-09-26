@@ -15,6 +15,18 @@ Plugin pentru Emby Server 4.9 prin care vizitatorii își cer singuri un cont, p
 - **Notificări** pe canale pornite separat: jurnalul de activitate Emby, e-mail, Telegram; opțional grupate.
 - **Actualizare din GitHub** din panou, cu verificarea semnăturii, și revenire la versiunea anterioară.
 
+## Butonul „Creează cont nou” pe ecranul de conectare
+
+Interfața web Emby (browser, pe calculator și telefon) primește un buton sub formularul de conectare, vizibil doar cât timp înregistrarea e deschisă. Emby nu lasă plugin-urile să modifice ecranul de conectare, așa că butonul se instalează o dată pe server:
+
+```sh
+sudo tools/install-login-button.sh          # instalare
+sudo tools/install-login-button.sh remove   # scoatere
+tools/install-login-button.sh status
+```
+
+Scriptul adaugă în `index.html`-ul Emby o linie care încarcă `/emby/Registration/Assets/login.js` (servit de plugin). La actualizarea Emby, `index.html` se rescrie: rulați din nou scriptul. Aplicațiile Emby (Android, iOS, televizoare) au propriul ecran de conectare, pe care nu îl poate modifica nimeni din server: acolo trimiteți linkul paginii (sau folosiți „Trimite acces”).
+
 ## Protecție anti-roboți și securitate
 
 | Strat | Ce face |

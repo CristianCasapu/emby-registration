@@ -141,6 +141,12 @@ public sealed class GetLoginNotice : IReturn<ActionResult>
 {
 }
 
+[Route("/Registration/Admin/LoginButton", "GET", Summary = "Daca butonul de pe ecranul de conectare web e instalat")]
+[Authenticated(Roles = "admin")]
+public sealed class GetLoginButton : IReturn<ActionResult>
+{
+}
+
 [Route("/Registration/Admin/Update", "GET", Summary = "Versiunea instalata si ultima versiune de pe GitHub")]
 [Authenticated(Roles = "admin")]
 public sealed class GetUpdateStatus : IReturn<UpdateStatus>
@@ -559,6 +565,21 @@ public sealed class AdminService : IService, IRequiresRequest
         branding.LoginDisclaimer = string.IsNullOrEmpty(current) ? null : current;
         _configurationManager.SaveConfiguration("branding", branding);
         return new ActionResult();
+    }
+
+    /// <summary>index.html-ul interfetei web apartine lui root: plugin-ul doar verifica, instalarea o face tools/install-login-button.sh.</summary>
+    public object Get(GetLoginButton request)
+    {
+        var index = Path.Combine(AppContext.BaseDirectory, "dashboard-ui", "index.html");
+        try
+        {
+            var installed = File.Exists(index) && File.ReadAllText(index).Contains("registration-login-button", StringComparison.Ordinal);
+            return new ActionResult { Ok = installed, Text = index };
+        }
+        catch (IOException ex)
+        {
+            return new ActionResult { Ok = false, Error = ex.Message, Text = index };
+        }
     }
 
     private BrandingOptions Branding() => (BrandingOptions)_configurationManager.GetConfiguration("branding");

@@ -143,14 +143,17 @@
                         <div class="rg-card" data-group="limits"></div>
                     </div>
                     <div class="rg-card">
-                        <h3><span class="md-icon">login</span>Text pe ecranul de conectare Emby</h3>
-                        <div class="rg-card-desc">Emby afișează sub formularul de conectare un text simplu (fără link apăsabil). Plugin-ul îl adaugă la textul existent și îl poate scoate fără să atingă restul.</div>
-                        <textarea class="rg-textarea txtLoginNotice" rows="2"></textarea>
+                        <h3><span class="md-icon">login</span>Buton pe ecranul de conectare</h3>
+                        <div class="rg-card-desc">Butonul „Creează cont nou” apare sub formularul de conectare din interfața web Emby (browser, pe calculator și telefon), doar cât timp înregistrarea e deschisă. Aplicațiile Emby (Android, iOS, televizoare) au ecranul lor de conectare, pe care un plugin nu îl poate modifica: acolo trimite linkul paginii.</div>
+                        <div class="rg-kv"><div>Stare</div><div class="loginButtonState">…</div></div>
+                        <div class="rg-help" style="margin-top:.6em">Instalare pe server (o singură dată și după fiecare actualizare Emby): <code class="rg-mono">sudo tools/install-login-button.sh</code> din depozitul plugin-ului. Scoatere: <code class="rg-mono">sudo tools/install-login-button.sh remove</code>.</div>
+                        <details style="margin-top:.8em"><summary class="rg-help" style="cursor:pointer">Text simplu în loc de buton (vizibil tot doar în browser)</summary>
+                        <textarea class="rg-textarea txtLoginNotice" rows="2" style="margin-top:.5em"></textarea>
                         <div class="rg-toolbar" style="margin-top:.6em">
-                            <button type="button" class="rg-btn rg-btn-primary btnSetNotice"><span class="md-icon">check</span>Afișează</button>
-                            <button type="button" class="rg-btn btnClearNotice"><span class="md-icon">close</span>Scoate</button>
+                            <button type="button" class="rg-btn btnSetNotice"><span class="md-icon">check</span>Afișează textul</button>
+                            <button type="button" class="rg-btn btnClearNotice"><span class="md-icon">close</span>Scoate textul</button>
                             <span class="rg-help noticeState"></span>
-                        </div>
+                        </div></details>
                     </div>
                 </div>
 
