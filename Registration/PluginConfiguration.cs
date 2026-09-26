@@ -119,6 +119,19 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Adrese sau retele (CIDR) interzise, una pe linie.</summary>
     public string BlockedIps { get; set; } = string.Empty;
 
+    // --- Cod de acces ---------------------------------------------------------------------------
+
+    /// <summary>Formularul se deschide doar dupa un cod de acces dat de admin (5 caractere, se schimba dupa fiecare folosire).</summary>
+    public bool RequireAccessCode { get; set; }
+
+    /// <summary>Coduri gresite permise inainte de blocare (pe adresa si pe dispozitiv, separat).</summary>
+    public int MaxCodeAttempts { get; set; } = 2;
+
+    public int CodeBlockHours { get; set; } = 24;
+
+    /// <summary>Cat ramane deschis formularul dupa un cod corect (ca reincarcarea paginii sa nu ceara alt cod).</summary>
+    public int CodeUnlockMinutes { get; set; } = 120;
+
     // --- Conturi multiple -------------------------------------------------------------------
 
     /// <summary>Cat timp tine minte plugin-ul adresele si dispozitivele cererilor (IP-urile sunt dinamice).</summary>

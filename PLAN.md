@@ -32,6 +32,7 @@ Legendă: ⬜ neînceput · 🟨 în lucru · ✅ gata · ⛔ blocat · ❓ așt
 | 14 | Trimite datele de acces (text, copiere, e-mail, WhatsApp, Telegram, SMS, partajare) | ✅ | Cerută 2026-09-25; parolă nouă generată/scrisă sau fără parolă |
 | 15 | Buton „Creează cont nou” pe ecranul de conectare (web) | ✅ | `tools/install-login-button.sh`; aplicațiile native nu pot fi modificate |
 | 16 | Un singur cont per dispozitiv / adresă, anti-roboți întărit, pagină doar pentru vizitatori legitimi | ✅ | v1.3.0; e2e pe Emby real (centre de date, Tor, adresă duplicată, dispozitiv, telefon, scripturi) |
+| 17 | Cod de acces rotativ (5 caractere, fără caractere asemănătoare), blocare IP + dispozitiv 24 h după 2 greșeli, deblocare din plugin; verificare chei Turnstile | ✅ | v1.4.0; codul e oprit până îl pornește adminul |
 | 13 | Deploy pe poweredge | ✅ | Instalat 2026-09-25; înregistrarea rămâne închisă până o deschide adminul |
 
 Jurnal de progres (se completează pe parcurs):
@@ -44,6 +45,7 @@ Jurnal de progres (se completează pe parcurs):
 | 2026-09-25 | 100c699 | Publicat pe GitHub (public) |
 | 2026-09-25 | v0.9.0 | Primul release (pre-release), publicat de GitHub Actions, semnătură verificată |
 | 2026-09-25 | v1.0.0 | Release 1.0.0, instalat pe server prin actualizarea din plugin |
+| 2026-09-26 | v1.4.0 | Cod de acces, blocări separate IP/dispozitiv, buton „Verifică cheile” Turnstile |
 | 2026-09-26 | v1.3.0 | Un cont per dispozitiv/adresă, doar vizitatori legitimi, 107 teste unitare |
 | 2026-09-26 | v1.2.0 | Înregistrare deschisă (aprobare manuală), biblioteci Filme + Seriale (Copii e în Filme), buton de login instalat |
 | 2026-09-25 | — | Deploy pe server; corectat: configurația nu se poate salva în constructorul plugin-ului; test e2e complet trecut |

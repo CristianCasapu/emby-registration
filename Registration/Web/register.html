@@ -35,6 +35,24 @@
         <a class="button secondary" id="closedSignIn" href="../../web/index.html" data-t="signIn">Intră în cont</a>
     </section>
 
+    <form class="card hidden" id="locked" novalidate autocomplete="off">
+        <div class="lock-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm6-9h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zM9 6a3 3 0 0 1 6 0v2H9V6z"/></svg>
+        </div>
+        <h2 data-t="lockedTitle">Cod de acces</h2>
+        <p class="intro" data-t="lockedText">Contul se cere doar cu un cod primit de la administrator.</p>
+        <div class="field" data-field="code">
+            <label for="code" data-t="codeLabel">Codul (5 caractere)</label>
+            <input id="code" name="code" class="code-input" type="text" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="5" required>
+            <p class="error" role="alert"></p>
+        </div>
+        <button type="submit" class="button" id="unlock">
+            <span class="label" data-t="unlock">Continuă</span>
+            <span class="busy hidden" aria-hidden="true"></span>
+        </button>
+        <p class="signin"><span data-t="haveAccount">Ai deja cont?</span> <a href="../../web/index.html" data-t="signIn">Intră în cont</a></p>
+    </form>
+
     <form class="card hidden" id="form" novalidate autocomplete="on">
         <p class="intro" id="intro"></p>
 

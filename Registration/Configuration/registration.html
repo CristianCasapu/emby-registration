@@ -139,6 +139,27 @@
                         </div>
                     </div>
                     <div class="rg-columns">
+                        <div class="rg-card">
+                            <h3><span class="md-icon">key</span>Codul de acces curent</h3>
+                            <div class="rg-card-desc">Dă-l persoanei care vrea cont. După ce e folosit, se generează automat altul; un cod nu se repetă niciodată.</div>
+                            <div class="codeBox rg-mono" style="font-size:2.2em;font-weight:700;letter-spacing:.35em;text-align:center;padding:.4em;border-radius:.4em;background:var(--rg-raised);border:1px solid var(--rg-line)">·····</div>
+                            <div class="rg-help codeState" style="margin-top:.5em;text-align:center"></div>
+                            <div class="rg-toolbar" style="margin-top:.7em;justify-content:center">
+                                <button type="button" class="rg-btn rg-btn-primary btnCopyCode"><span class="md-icon">content_copy</span>Copiază codul</button>
+                                <button type="button" class="rg-btn btnShareCode"><span class="md-icon">share</span>Copiază mesajul</button>
+                                <button type="button" class="rg-btn btnWhatsappCode"><span class="md-icon">chat</span>WhatsApp</button>
+                                <button type="button" class="rg-btn btnNewCode"><span class="md-icon">autorenew</span>Cod nou</button>
+                            </div>
+                            <details style="margin-top:.8em"><summary class="rg-help" style="cursor:pointer">Coduri anterioare</summary><div class="codeHistory" style="margin-top:.5em"></div></details>
+                        </div>
+                        <div class="rg-card" data-group="code"></div>
+                    </div>
+                    <div class="rg-card">
+                        <h3><span class="md-icon">block</span>Blocări după coduri greșite</h3>
+                        <div class="rg-card-desc">Adresa IP și dispozitivul se blochează separat. Deblocarea șterge și încercările greșite anterioare.</div>
+                        <div class="rg-table-wrap blockTable"></div>
+                    </div>
+                    <div class="rg-columns">
                         <div class="rg-card" data-group="general"></div>
                         <div class="rg-card" data-group="limits"></div>
                     </div>

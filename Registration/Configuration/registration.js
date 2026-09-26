@@ -25,6 +25,16 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
             ]
         },
         {
+            id: 'code', icon: 'password', title: 'Cod de acces',
+            fields: [
+                { key: 'RequireAccessCode', type: 'bool', def: false, label: 'Cere cod de acces',
+                    help: 'Pagina de înregistrare arată întâi un câmp pentru cod (5 caractere: litere mari și cifre, fără cele care se confundă, ca 0/O sau 1/I/L). Formularul apare doar după codul corect.' },
+                { key: 'MaxCodeAttempts', type: 'int', def: 2, min: 1, max: 10, unit: 'greșeli', label: 'Blochează după', help: 'Numărate separat pentru adresa IP și pentru dispozitiv.' },
+                { key: 'CodeBlockHours', type: 'int', def: 24, min: 1, max: 720, unit: 'ore', label: 'Durata blocării' },
+                { key: 'CodeUnlockMinutes', type: 'int', def: 120, min: 5, max: 1440, unit: 'minute', label: 'Formularul rămâne deschis', help: 'După codul corect, pe același dispozitiv (dacă reîncarcă pagina nu trebuie alt cod).' }
+            ]
+        },
+        {
             id: 'limits', icon: 'speed', title: 'Limite',
             fields: [
                 { key: 'MaxAccounts', type: 'int', def: 0, min: 0, max: 100000, unit: 'conturi', label: 'Conturi în total', help: 'Aprobate + în așteptare, create prin plugin. 0 = fără limită.' },
@@ -103,9 +113,10 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
             id: 'turnstile', icon: 'verified_user', title: 'Cloudflare Turnstile',
             desc: 'Verificare invizibilă pentru majoritatea oamenilor. Chei gratuite din panoul Cloudflare → Turnstile → Add widget (domeniul serverului). Fără chei, rămân celelalte protecții.',
             fields: [
-                { key: 'TurnstileSiteKey', type: 'text', def: '', label: 'Site key' },
-                { key: 'TurnstileSecretKey', type: 'password', def: '', label: 'Secret key' }
-            ]
+                { key: 'TurnstileSiteKey', type: 'text', def: '', label: 'Site key', placeholder: '0x4AAAAAAA…' },
+                { key: 'TurnstileSecretKey', type: 'password', def: '', label: 'Secret key', placeholder: '0x4AAAAAAA…' }
+            ],
+            actions: '<button type="button" class="rg-btn btnTestTurnstile"><span class="md-icon">verified</span>Verifică cheile</button>'
         },
         {
             id: 'pow', icon: 'memory', title: 'Proof-of-work și capcane',
@@ -210,7 +221,8 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
         requests: 'Cereri primite', approved: 'Aprobate', rejected: 'Respinse', invalid: 'Câmpuri greșite', duplicate_email: 'E-mail repetat',
         rate_limited: 'Limită de încercări', blocked_ip: 'IP blocat', bot_honeypot: 'Robot: capcană', bot_token: 'Robot: fără token',
         bot_token_reuse: 'Robot: token refolosit', bot_too_fast: 'Prea rapid', bot_pow: 'Robot: proof-of-work', bot_turnstile: 'Robot: Turnstile',
-        bot_origin: 'Robot: nu din pagină', bot_automation: 'Browser automatizat', bot_interaction: 'Fără interacțiune reală',
+        bot_origin: 'Robot: nu din pagină', bot_locked: 'Fără cod de acces', code_used: 'Coduri folosite', code_wrong: 'Coduri greșite',
+        code_block_ip: 'Adrese blocate (cod)', code_block_device: 'Dispozitive blocate (cod)', bot_automation: 'Browser automatizat', bot_interaction: 'Fără interacțiune reală',
         network_blocked: 'VPN / centru de date / Tor', country_blocked: 'Țară nepermisă',
         dup_same_device: 'Același dispozitiv', dup_signed_in: 'Deja conectat cu un cont', dup_same_ip: 'Aceeași adresă IP',
         dup_existing_ip: 'Adresa unui cont existent', dup_same_subnet: 'Aceeași rețea', dup_fingerprint_subnet: 'Același browser și rețea',
@@ -994,6 +1006,42 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
         }
     }
 
+    // --- Codul de acces ---------------------------------------------------------------------
+
+    function renderCode(instance, data) {
+        var view = instance.view;
+        instance.code = data.Code;
+        view.querySelector('.codeBox').textContent = data.Code;
+        var enabled = instance.config && instance.config.RequireAccessCode;
+        view.querySelector('.codeState').textContent = (enabled ? 'Activ.' : 'Codul nu e cerut acum (pornește „Cere cod de acces” și salvează).') +
+            ' Generat ' + formatDate(data.Created) + '. Coduri greșite în ultimele 24 de ore: ' + data.WrongLastDay + '.';
+        view.querySelector('.codeHistory').innerHTML = data.History.length ? '<table class="rg-table"><thead><tr><th>Cod</th><th>Generat</th><th>Folosit</th><th>De la</th></tr></thead><tbody>' +
+            data.History.map(function (c) {
+                return '<tr><td class="rg-mono">' + escapeHtml(c.Code) + '</td><td class="rg-nowrap">' + escapeHtml(formatDate(c.CreatedAt)) + '</td><td class="rg-nowrap">' +
+                    (c.UsedAt ? escapeHtml(formatDate(c.UsedAt)) : (c.Replaced ? 'înlocuit, nefolosit' : '—')) + '</td><td>' +
+                    (c.UsedByCountry ? flag(c.UsedByCountry) : '') + escapeHtml(c.UsedByIp || '') + '</td></tr>';
+            }).join('') + '</tbody></table>' : '<span class="rg-muted">Niciun cod folosit încă.</span>';
+        var now = Date.now();
+        view.querySelector('.blockTable').innerHTML = data.Blocks.length ? '<table class="rg-table"><thead><tr><th>Ce</th><th>Cine</th><th>Blocat</th><th>Până la</th><th></th></tr></thead><tbody>' +
+            data.Blocks.map(function (b) {
+                var active = new Date(b.Until).getTime() > now;
+                return '<tr data-block="' + escapeHtml(b.Id) + '"><td>' + (b.Kind === 'ip' ? 'Adresă IP' : 'Dispozitiv') + '<span class="rg-sub rg-mono">' + escapeHtml(b.Value) + '</span></td>' +
+                    '<td>' + escapeHtml(b.Label || '') + '<span class="rg-sub">' + b.Attempts + ' coduri greșite</span></td>' +
+                    '<td class="rg-nowrap">' + escapeHtml(formatDate(b.CreatedAt)) + '</td>' +
+                    '<td class="rg-nowrap">' + (active ? escapeHtml(formatDate(b.Until)) : '<span class="rg-muted">expirat / deblocat</span>') + '</td>' +
+                    '<td>' + (active ? '<button type="button" class="rg-btn rg-btn-small" data-unblock="1"><span class="md-icon">lock_open</span>Deblochează</button>' : '') + '</td></tr>';
+            }).join('') + '</tbody></table>' : '<div class="rg-empty">Nicio blocare.</div>';
+    }
+
+    function loadCode(instance) {
+        return api('GET', 'Registration/Admin/AccessCode').then(function (data) { renderCode(instance, data); });
+    }
+
+    function codeMessage(instance) {
+        return 'Cod de acces pentru un cont nou pe ' + (instance.config && instance.config.ServerDisplayName || 'serverul Emby') + ': ' + instance.code +
+            '\nPagina de înregistrare: ' + publicLink() + '\nCodul se poate folosi o singură dată.';
+    }
+
     // --- Tab-uri -------------------------------------------------------------------------------
 
     function showTab(instance, name) {
@@ -1013,6 +1061,7 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
         } else if (name === 'maintenance') {
             loadStats(instance);
         } else if (name === 'general') {
+            loadCode(instance);
             api('GET', 'Registration/Admin/LoginButton').then(function (r) {
                 var box = view.querySelector('.loginButtonState');
                 box.textContent = r.Ok ? 'instalat' : 'neinstalat';
@@ -1107,6 +1156,44 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
                 }
                 renderLibraries(instance);
             }
+        });
+
+        view.querySelector('.btnCopyCode').addEventListener('click', function () {
+            copyText(instance.code || '').then(function () { toast('Codul a fost copiat.'); }, function () { window.prompt('Codul:', instance.code); });
+        });
+        view.querySelector('.btnShareCode').addEventListener('click', function () {
+            var text = codeMessage(instance);
+            if (navigator.share) {
+                navigator.share({ text: text }).catch(function () { /* anulat */ });
+                return;
+            }
+            copyText(text).then(function () { toast('Mesajul cu codul a fost copiat.'); }, function () { window.prompt('Mesajul:', text); });
+        });
+        view.querySelector('.btnWhatsappCode').addEventListener('click', function () {
+            openExternal('https://wa.me/?text=' + encodeURIComponent(codeMessage(instance)));
+        });
+        view.querySelector('.btnNewCode').addEventListener('click', function () {
+            if (!window.confirm('Generezi alt cod? Codul ' + instance.code + ' nu va mai funcționa.')) { return; }
+            api('POST', 'Registration/Admin/AccessCode/Replace').then(function (data) {
+                renderCode(instance, data);
+                toast('Cod nou: ' + data.Code);
+            });
+        });
+        view.querySelector('.blockTable').addEventListener('click', function (e) {
+            var button = e.target.closest('[data-unblock]');
+            if (!button) { return; }
+            var id = button.closest('tr').getAttribute('data-block');
+            api('POST', 'Registration/Admin/Unblock', { Id: id }).then(function (r) {
+                toast(r.Ok ? 'Deblocat.' : 'Eroare: ' + r.Error);
+                loadCode(instance);
+            });
+        });
+        view.querySelector('.btnTestTurnstile').addEventListener('click', function () {
+            if (instance.dirty) { toast('Salvează întâi setările.'); return; }
+            loading.show();
+            api('POST', 'Registration/Admin/TestTurnstile').then(function (r) {
+                toast(r.Ok ? r.Text : 'Turnstile: ' + r.Error);
+            }).finally(function () { loading.hide(); });
         });
 
         view.querySelector('.btnCopyLink').addEventListener('click', function () {

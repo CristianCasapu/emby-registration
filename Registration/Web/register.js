@@ -20,6 +20,12 @@
             network_blocked: 'Înregistrarea nu este disponibilă prin VPN, proxy, Tor sau rețele de centre de date. Deconectează VPN-ul și încearcă din nou.',
             country_blocked: 'Înregistrarea nu este disponibilă din țara ta.',
             rate_limited: 'Prea multe încercări. Încearcă din nou mai târziu.',
+            blocked: 'Prea multe coduri greșite. Poți încerca din nou după {until}.',
+            locked: 'Formularul s-a închis. Reîncarcă pagina și introdu codul de acces.',
+            lockedTitle: 'Cod de acces',
+            lockedText: 'Contul se cere doar cu un cod primit de la administrator.',
+            codeLabel: 'Codul (5 caractere)',
+            unlock: 'Continuă',
             introApproval: 'Completează formularul. Contul devine activ după ce administratorul aprobă cererea; vei primi un e-mail.',
             introAutomatic: 'Completează formularul și contul tău va fi creat imediat.',
             introInvite: 'Ai nevoie de un cod de invitație de la administrator. Contul devine activ după aprobare.',
@@ -88,6 +94,9 @@
                 consent_required: 'Este necesar acordul tău.',
                 invite_invalid: 'Codul de invitație nu este valabil.',
                 phone_taken: 'Acest număr de telefon a fost deja folosit pentru un cont.',
+                code_length: 'Codul are exact 5 caractere.',
+                wrong_code: 'Cod greșit. Mai ai {left} încercări.',
+                wrong_code_last: 'Cod greșit. Mai ai o singură încercare; după încă o greșeală, accesul se blochează 24 de ore.',
                 token_invalid: 'Formularul nu mai este valabil. Am pregătit unul nou: apasă din nou „Trimite”.',
                 token_expired: 'Formularul a expirat. Am pregătit unul nou: apasă din nou „Trimite”.',
                 too_fast: 'Ai completat foarte repede. Așteaptă câteva secunde și apasă din nou „Trimite”.',
@@ -114,6 +123,12 @@
             network_blocked: 'Registration is not available through VPNs, proxies, Tor or data-center networks. Disconnect the VPN and try again.',
             country_blocked: 'Registration is not available from your country.',
             rate_limited: 'Too many attempts. Please try again later.',
+            blocked: 'Too many wrong codes. You can try again after {until}.',
+            locked: 'The form has closed. Reload the page and enter the access code.',
+            lockedTitle: 'Access code',
+            lockedText: 'Accounts can be requested only with a code from the administrator.',
+            codeLabel: 'Code (5 characters)',
+            unlock: 'Continue',
             introApproval: 'Fill in the form. Your account becomes active once the administrator approves it; you will get an email.',
             introAutomatic: 'Fill in the form and your account will be created right away.',
             introInvite: 'You need an invitation code from the administrator. Your account becomes active after approval.',
@@ -182,6 +197,9 @@
                 consent_required: 'Your consent is required.',
                 invite_invalid: 'The invitation code is not valid.',
                 phone_taken: 'This phone number has already been used for an account.',
+                code_length: 'The code has exactly 5 characters.',
+                wrong_code: 'Wrong code. {left} attempts left.',
+                wrong_code_last: 'Wrong code. One attempt left; after another mistake, access is blocked for 24 hours.',
                 token_invalid: 'The form is no longer valid. A new one is ready: press "Send" again.',
                 token_expired: 'The form has expired. A new one is ready: press "Send" again.',
                 too_fast: 'That was very fast. Wait a few seconds and press "Send" again.',
@@ -301,7 +319,7 @@
     }
 
     function show(id) {
-        ['loading', 'closed', 'form', 'done'].forEach(function (name) {
+        ['loading', 'closed', 'locked', 'form', 'done'].forEach(function (name) {
             $(name).classList.toggle('hidden', name !== id);
         });
     }
@@ -320,7 +338,7 @@
     // --- Comunicare cu serverul --------------------------------------------------------------
 
     function api(path, body) {
-        var options = { method: body ? 'POST' : 'GET', headers: { Accept: 'application/json' }, credentials: 'omit', cache: 'no-store' };
+        var options = { method: body ? 'POST' : 'GET', headers: { Accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store' };
         if (body) {
             options.headers['Content-Type'] = 'application/json';
             options.body = JSON.stringify(body);
@@ -751,6 +769,11 @@
             return;
         }
 
+        if (result.Outcome === 'Closed' && result.Error === 'locked') {
+            loadInfo().then(startForm);
+            return;
+        }
+
         if (result.Outcome === 'Closed' || result.Outcome === 'Blocked') {
             showClosed(result.Error);
             return;
@@ -809,10 +832,12 @@
         $('doneTitle').focus && $('doneTitle').setAttribute('tabindex', '-1');
     }
 
-    function showClosed(reason) {
+    function showClosed(reason, until) {
         var generic = ['closed', 'not_yet', 'ended', 'full', 'busy'].indexOf(reason || 'closed') >= 0;
         var detail = info && info.ClosedDetail ? ' (' + info.ClosedDetail + ')' : '';
-        $('closedText').textContent = (generic && info && info.ClosedMessage) || t(reason || 'closed', { name: detail });
+        until = until || (info && info.BlockedUntil);
+        var when = until ? new Date(until).toLocaleString(lang === 'en' ? 'en-GB' : 'ro-RO', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        $('closedText').textContent = (generic && info && info.ClosedMessage) || t(reason || 'closed', { name: detail, until: when });
         show('closed');
     }
 
@@ -832,6 +857,61 @@
             Object.keys(draft).forEach(function (f) { if ($(f) && draft[f]) { $(f).value = draft[f]; } });
             updatePhoneHelp();
         } catch (e) { /* ciorna invalida */ }
+    }
+
+    // --- Codul de acces ---------------------------------------------------------------------------
+
+    function showLocked() {
+        show('locked');
+        $('code').value = '';
+        $('code').focus({ preventScroll: true });
+    }
+
+    function onUnlock(event) {
+        event.preventDefault();
+        var code = $('code').value.toUpperCase().replace(/[\s-]/g, '');
+        if (code.length !== (info.CodeLength || 5)) {
+            setError('code', 'code_length');
+            return;
+        }
+        setError('code', null);
+        var button = $('unlock');
+        button.disabled = true;
+        button.querySelector('.busy').classList.remove('hidden');
+        api('Unlock', { Code: code, Device: storedDevice() }).then(function (result) {
+            if (result.Ok) {
+                return loadInfo().then(startForm);
+            }
+            if (result.Error === 'blocked') {
+                showClosed('blocked', result.BlockedUntil);
+            } else if (result.Error === 'wrong_code') {
+                setError('code', result.AttemptsLeft === 1 ? 'wrong_code_last' : 'wrong_code', { left: result.AttemptsLeft });
+                $('code').select();
+            } else {
+                showClosed(result.Error || 'rate_limited');
+            }
+        }, function () {
+            setError('code', 'network');
+        }).then(function () {
+            button.disabled = false;
+            button.querySelector('.busy').classList.add('hidden');
+        });
+    }
+
+    function startForm() {
+        applyTexts();
+        if (!info.Open) {
+            showClosed(info.ClosedReason);
+            return;
+        }
+        if (info.Locked) {
+            showLocked();
+            return;
+        }
+        restoreDraft();
+        loadTurnstile();
+        show('form');
+        $('username').focus({ preventScroll: true });
     }
 
     // --- Pornire ------------------------------------------------------------------------------
@@ -918,6 +998,13 @@
         });
 
         $('form').addEventListener('submit', onSubmit);
+        $('locked').addEventListener('submit', onUnlock);
+        $('code').addEventListener('input', function () {
+            var el = $('code');
+            var clean = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+            if (clean !== el.value) { el.value = clean; }
+            setError('code', null);
+        });
     }
 
     function confirmFromLink(token) {
@@ -944,17 +1031,7 @@
             return;
         }
 
-        loadInfo().then(function () {
-            applyTexts();
-            if (!info.Open) {
-                showClosed(info.ClosedReason);
-                return;
-            }
-            restoreDraft();
-            loadTurnstile();
-            show('form');
-            $('username').focus({ preventScroll: true });
-        }).catch(function () {
+        loadInfo().then(startForm).catch(function () {
             $('closedText').textContent = t('errors.network');
             show('closed');
         });

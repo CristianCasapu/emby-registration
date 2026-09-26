@@ -248,6 +248,44 @@ public sealed class AccessInfo
     public bool Disabled { get; set; }
 }
 
+[Route("/Registration/Admin/AccessCode", "GET", Summary = "Codul de acces curent, istoricul si blocarile")]
+[Authenticated(Roles = "admin")]
+public sealed class GetAccessCode : IReturn<AccessCodeInfo>
+{
+}
+
+[Route("/Registration/Admin/AccessCode/Replace", "POST", Summary = "Inlocuieste codul de acces cu unul nou")]
+[Authenticated(Roles = "admin")]
+public sealed class ReplaceAccessCode : IReturn<AccessCodeInfo>
+{
+}
+
+[Route("/Registration/Admin/Unblock", "POST", Summary = "Deblocheaza o adresa IP sau un dispozitiv")]
+[Authenticated(Roles = "admin")]
+public sealed class UnblockVisitor : IReturn<ActionResult>
+{
+    public string Id { get; set; } = string.Empty;
+}
+
+[Route("/Registration/Admin/TestTurnstile", "POST", Summary = "Verifica cheia secreta Turnstile salvata")]
+[Authenticated(Roles = "admin")]
+public sealed class TestTurnstile : IReturn<ActionResult>
+{
+}
+
+public sealed class AccessCodeInfo
+{
+    public string Code { get; set; } = string.Empty;
+
+    public DateTimeOffset Created { get; set; }
+
+    public List<CodeUse> History { get; set; } = new();
+
+    public List<AccessBlock> Blocks { get; set; } = new();
+
+    public int WrongLastDay { get; set; }
+}
+
 public sealed class RequestList
 {
     public List<RequestView> Waiting { get; set; } = new();
@@ -698,6 +736,66 @@ public sealed class AdminService : IService, IRequiresRequest
             _ = new System.Net.Mail.MailAddress(to);
             await Mailer.SendAsync(RegistrationManager.Settings, new[] { to }, request.Subject, request.Text, Request.CancellationToken).ConfigureAwait(false);
             return new ActionResult();
+        }
+        catch (Exception ex)
+        {
+            return new ActionResult { Ok = false, Error = ex.GetBaseException().Message };
+        }
+    }
+
+    public object Get(GetAccessCode request) => CodeInfo();
+
+    public object Post(ReplaceAccessCode request)
+    {
+        Manager.ReplaceCode(DateTimeOffset.UtcNow);
+        return CodeInfo();
+    }
+
+    private AccessCodeInfo CodeInfo()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var (code, created) = Manager.CurrentCode(now);
+        return Manager.Store.Read(d => new AccessCodeInfo
+        {
+            Code = code,
+            Created = created,
+            History = d.CodeHistory.Where(c => c.Code != code).OrderByDescending(c => c.UsedAt ?? c.CreatedAt).Take(20)
+                .Select(c => new CodeUse { Code = c.Code, CreatedAt = c.CreatedAt, UsedAt = c.UsedAt, UsedByIp = c.UsedByIp, UsedByCountry = c.UsedByCountry, Replaced = c.Replaced }).ToList(),
+            Blocks = d.Blocks.OrderByDescending(b => b.CreatedAt).Take(100)
+                .Select(b => new AccessBlock { Id = b.Id, Kind = b.Kind, Value = b.Kind == "device" ? b.Value[..Math.Min(8, b.Value.Length)] : b.Value, Label = b.Label, CreatedAt = b.CreatedAt, Until = b.Until, Attempts = b.Attempts }).ToList(),
+            WrongLastDay = d.CodeAttempts.Count(a => now - a.At < TimeSpan.FromDays(1)),
+        });
+    }
+
+    public object Post(UnblockVisitor request) =>
+        Manager.Unblock(request.Id, DateTimeOffset.UtcNow) ? new ActionResult() : new ActionResult { Ok = false, Error = "not_found" };
+
+    /// <summary>
+    /// Cloudflare raspunde la un token inventat cu „invalid-input-response” daca cheia
+    /// secreta e buna si cu „invalid-input-secret” daca nu.
+    /// </summary>
+    public async Task<object> Post(TestTurnstile request)
+    {
+        var settings = RegistrationManager.Settings;
+        if (string.IsNullOrWhiteSpace(settings.TurnstileSiteKey) || string.IsNullOrWhiteSpace(settings.TurnstileSecretKey))
+        {
+            return new ActionResult { Ok = false, Error = "Completează și salvează ambele chei." };
+        }
+
+        try
+        {
+            var form = new Dictionary<string, string> { ["secret"] = settings.TurnstileSecretKey.Trim(), ["response"] = "test-" + Guid.NewGuid().ToString("N") };
+            using var response = await Registration.Security.WebChecks.Http.PostAsync(
+                "https://challenges.cloudflare.com/turnstile/v0/siteverify", new FormUrlEncodedContent(form), Request.CancellationToken).ConfigureAwait(false);
+            var body = await response.Content.ReadAsStringAsync(Request.CancellationToken).ConfigureAwait(false);
+            if (body.Contains("invalid-input-secret", StringComparison.Ordinal))
+            {
+                return new ActionResult { Ok = false, Error = "Cheia secretă nu este validă." };
+            }
+
+            return body.Contains("invalid-input-response", StringComparison.Ordinal) || body.Contains("timeout-or-duplicate", StringComparison.Ordinal)
+                ? new ActionResult { Text = "Cheia secretă este validă. Verifică pagina de înregistrare: widget-ul trebuie să apară fără eroare (site key corect pentru domeniu)." }
+                : new ActionResult { Ok = false, Error = "Răspuns neașteptat de la Cloudflare: " + body };
         }
         catch (Exception ex)
         {

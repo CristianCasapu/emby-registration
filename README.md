@@ -50,6 +50,14 @@ Cloudflare WARP (1.1.1.1) ascunde adresa reală și e comun multor oameni: regul
 - Browserele automatizate (`navigator.webdriver`, Chrome headless, Puppeteer, Playwright) sunt refuzate; formularul cere tastare sau atingeri reale (`isTrusted`).
 - Proof-of-work-ul devine mai greu când vin multe cereri.
 
+## Cod de acces
+
+Opțional, formularul se deschide doar cu un cod dat de administrator (Înregistrare → General):
+- 5 caractere, litere mari și cifre, fără cele care se confundă (0/O, 1/I/L, 2/Z, 5/S, 8/B…);
+- un singur cod valabil; după folosire se generează automat altul, iar un cod emis nu mai apare niciodată;
+- după 2 coduri greșite se blochează 24 de ore, separat, adresa IP și dispozitivul; deblocare din același tab;
+- codul se copiază sau se trimite pe WhatsApp direct din panou.
+
 ## Protecție anti-roboți și securitate
 
 | Strat | Ce face |

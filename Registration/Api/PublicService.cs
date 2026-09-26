@@ -45,6 +45,15 @@ public sealed class SubmitRegistration : SubmitForm, IReturn<SubmitResult>
 {
 }
 
+[Route("/Registration/Unlock", "POST", Summary = "Deblocheaza formularul cu codul de acces")]
+[Unauthenticated]
+public sealed class UnlockRegistration : IReturn<UnlockResult>
+{
+    public string? Code { get; set; }
+
+    public string? Device { get; set; }
+}
+
 [Route("/Registration/ConfirmEmail", "POST", Summary = "Confirma adresa de e-mail dintr-o cerere")]
 [Unauthenticated]
 public sealed class ConfirmRegistrationEmail : IReturn<ConfirmResult>
@@ -60,6 +69,14 @@ public sealed class RegistrationInfo
     public string? ClosedReason { get; set; }
 
     public string? ClosedMessage { get; set; }
+
+    /// <summary>Formularul cere intai codul de acces.</summary>
+    public bool Locked { get; set; }
+
+    public int CodeLength { get; set; }
+
+    /// <summary>La „blocked”: pana cand.</summary>
+    public DateTimeOffset? BlockedUntil { get; set; }
 
     /// <summary>La „signed_in”: numele contului cu care browserul e deja conectat.</summary>
     public string? ClosedDetail { get; set; }
@@ -196,6 +213,12 @@ public sealed class PublicService : IService, IRequiresRequest
 
         manager.Limits.Record(infoKey, now);
         closed ??= manager.ClosedReason(now);
+        var block = closed == null ? manager.ActiveBlock(RateLimiter.Normalize(origin.Ip)?.ToString(), manager.DeviceHashOf(device), now) : null;
+        if (block != null)
+        {
+            closed = "blocked";
+        }
+
         if (closed == null)
         {
             var network = manager.Network(origin);
@@ -207,11 +230,11 @@ public sealed class PublicService : IService, IRequiresRequest
                     Device = device,
                     EmbyUsers = (request.Users ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                 };
-                var block = manager.FindDuplicates(evidence, origin, network, null, now).FirstOrDefault(x => x.Action == DuplicateActions.Block);
-                if (block != null)
+                var duplicate = manager.FindDuplicates(evidence, origin, network, null, now).FirstOrDefault(x => x.Action == DuplicateActions.Block);
+                if (duplicate != null)
                 {
-                    closed = RegistrationManager.BlockReason(block);
-                    detail = block.Code == "signed_in" ? block.Detail[(block.Detail.LastIndexOf(' ') + 1)..] : null;
+                    closed = RegistrationManager.BlockReason(duplicate);
+                    detail = duplicate.Code == "signed_in" ? duplicate.Detail[(duplicate.Detail.LastIndexOf(' ') + 1)..] : null;
                 }
             }
         }
@@ -227,12 +250,20 @@ public sealed class PublicService : IService, IRequiresRequest
             Mode = settings.Mode,
             ServerUrl = string.IsNullOrWhiteSpace(settings.PublicUrl) ? null : settings.PublicUrl.Trim().TrimEnd('/'),
             ClosedDetail = detail,
+            BlockedUntil = block?.Until,
             Device = device,
             ServerId = manager.ServerId,
         };
 
         if (closed != null)
         {
+            return _resultFactory.GetResult(Request, info, headers);
+        }
+
+        if (settings.RequireAccessCode && !manager.HasPass(origin.PassCookie, device, RateLimiter.Normalize(origin.Ip)?.ToString(), now))
+        {
+            info.Locked = true;
+            info.CodeLength = RegistrationManager.CodeLength;
             return _resultFactory.GetResult(Request, info, headers);
         }
 
@@ -272,6 +303,37 @@ public sealed class PublicService : IService, IRequiresRequest
         return _resultFactory.GetResult(Request, result, headers);
     }
 
+    public object Post(UnlockRegistration request)
+    {
+        var manager = Manager;
+        var settings = RegistrationManager.Settings;
+        var now = DateTimeOffset.UtcNow;
+        var origin = Origin();
+        var headers = Headers();
+        if (settings.RequireSameOrigin && !RegistrationManager.SameOrigin(origin))
+        {
+            return _resultFactory.GetResult(Request, new UnlockResult { Error = "rate_limited" }, headers);
+        }
+
+        var network = manager.Network(origin);
+        if (manager.GateVisitor(origin, network) is { } gate)
+        {
+            return _resultFactory.GetResult(Request, new UnlockResult { Error = gate }, headers);
+        }
+
+        var device = origin.DeviceCookie ?? request.Device;
+        var result = manager.TryUnlock(request.Code, origin, device, now);
+        if (result.Ok && result.Pass != null)
+        {
+            var secure = Request.IsSecureConnection || string.Equals(Request.XForwardedProtocol, "https", StringComparison.OrdinalIgnoreCase)
+                || settings.PublicUrl.StartsWith("https:", StringComparison.OrdinalIgnoreCase);
+            headers["Set-Cookie"] = $"{RegistrationManager.PassCookieName}={result.Pass}; Path=/; Max-Age={Math.Max(5, settings.CodeUnlockMinutes) * 60}; HttpOnly; SameSite=Strict" + (secure ? "; Secure" : string.Empty);
+            result.Pass = null;
+        }
+
+        return _resultFactory.GetResult(Request, result, headers);
+    }
+
     public object Post(ConfirmRegistrationEmail request) => Json(new ConfirmResult
     {
         Outcome = Manager.ConfirmEmail(request.Token, Origin(), DateTimeOffset.UtcNow),
@@ -286,6 +348,7 @@ public sealed class PublicService : IService, IRequiresRequest
         Host = RawHeader("Host"),
         FetchSite = RawHeader("Sec-Fetch-Site")?.ToLowerInvariant(),
         DeviceCookie = DeviceIdentity.FromCookieHeader(RawHeader("Cookie")),
+        PassCookie = DeviceIdentity.Cookie(RawHeader("Cookie"), RegistrationManager.PassCookieName),
     };
 
     private string? RawHeader(string name)

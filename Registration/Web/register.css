@@ -460,3 +460,31 @@ a {
         transition: none !important;
     }
 }
+
+#locked {
+    text-align: center;
+}
+
+#locked .field {
+    text-align: left;
+}
+
+.lock-icon {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    margin: 4px auto 14px;
+    border-radius: 50%;
+    background: rgba(82, 181, 75, 0.15);
+    color: var(--accent);
+}
+
+input.code-input {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 28px;
+    letter-spacing: 0.5em;
+    text-align: center;
+    text-transform: uppercase;
+    padding-left: 0.5em;
+}

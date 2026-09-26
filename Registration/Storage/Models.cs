@@ -127,8 +127,70 @@ public sealed class DailyStats
     public Dictionary<string, int> Counters { get; set; } = new();
 }
 
+/// <summary>Blocare dupa coduri de acces gresite: separat pe adresa IP si pe dispozitiv.</summary>
+public sealed class AccessBlock
+{
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>ip sau device.</summary>
+    public string Kind { get; set; } = "ip";
+
+    /// <summary>Adresa IP sau hash-ul dispozitivului.</summary>
+    public string Value { get; set; } = string.Empty;
+
+    /// <summary>Pentru admin: adresa, tara, browserul.</summary>
+    public string? Label { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset Until { get; set; }
+
+    public int Attempts { get; set; }
+
+    public bool IsActive(DateTimeOffset now) => Until > now;
+}
+
+/// <summary>O incercare gresita de cod, pastrata 24 de ore.</summary>
+public sealed class CodeAttempt
+{
+    public DateTimeOffset At { get; set; }
+
+    public string Ip { get; set; } = string.Empty;
+
+    public string? DeviceHash { get; set; }
+}
+
+/// <summary>Folosirea unui cod (cine a deblocat formularul).</summary>
+public sealed class CodeUse
+{
+    public string Code { get; set; } = string.Empty;
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset? UsedAt { get; set; }
+
+    public string? UsedByIp { get; set; }
+
+    public string? UsedByCountry { get; set; }
+
+    /// <summary>Cod inlocuit manual de admin, nefolosit.</summary>
+    public bool Replaced { get; set; }
+}
+
 public sealed class StoreData
 {
+    /// <summary>Codul de acces valabil acum (unul singur).</summary>
+    public string? AccessCode { get; set; }
+
+    public DateTimeOffset? AccessCodeCreated { get; set; }
+
+    /// <summary>Toate codurile emise vreodata: un cod nu se repeta.</summary>
+    public List<CodeUse> CodeHistory { get; set; } = new();
+
+    public List<AccessBlock> Blocks { get; set; } = new();
+
+    public List<CodeAttempt> CodeAttempts { get; set; } = new();
+
     public List<RegistrationRecord> Requests { get; set; } = new();
 
     public List<InviteCode> Invites { get; set; } = new();

@@ -59,7 +59,9 @@ public sealed class DeviceIdentity
     private byte[] Sign(byte[] id) => HMACSHA256.HashData(_secret(), id.Concat(Encoding.UTF8.GetBytes("device")).ToArray())[..16];
 
     /// <summary>Valoarea cookie-ului din antetul Cookie.</summary>
-    public static string? FromCookieHeader(string? header)
+    public static string? FromCookieHeader(string? header) => Cookie(header, CookieName);
+
+    public static string? Cookie(string? header, string name)
     {
         if (string.IsNullOrEmpty(header))
         {
@@ -69,7 +71,7 @@ public sealed class DeviceIdentity
         foreach (var part in header.Split(';'))
         {
             var eq = part.IndexOf('=');
-            if (eq > 0 && part[..eq].Trim() == CookieName)
+            if (eq > 0 && part[..eq].Trim() == name)
             {
                 return part[(eq + 1)..].Trim();
             }

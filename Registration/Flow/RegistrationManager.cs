@@ -78,6 +78,9 @@ public sealed record Origin(IPAddress? Ip, string? IpCountry, string? UserAgent)
 
     /// <summary>Identificatorul de dispozitiv din cookie.</summary>
     public string? DeviceCookie { get; init; }
+
+    /// <summary>Dovada codului de acces corect (cookie).</summary>
+    public string? PassCookie { get; init; }
 }
 
 public sealed class SubmitResult
@@ -274,6 +277,19 @@ public sealed partial class RegistrationManager
         {
             Store.Count(gate, now);
             return SubmitResult.Fail("Closed", gate);
+        }
+
+        var visitorIp = RateLimiter.Normalize(origin.Ip)?.ToString();
+        var visitorDevice = origin.DeviceCookie ?? form.Device;
+        if (ActiveBlock(visitorIp, DeviceHashOf(visitorDevice), now) != null)
+        {
+            return SubmitResult.Fail("Blocked", "blocked");
+        }
+
+        if (settings.RequireAccessCode && !HasPass(origin.PassCookie, visitorDevice, visitorIp, now))
+        {
+            Store.Count("bot_locked", now);
+            return SubmitResult.Fail("Closed", "locked");
         }
 
         // Capcana: raspundem ca si cum cererea ar fi reusit, ca robotul sa nu invete nimic.
@@ -867,6 +883,7 @@ public sealed partial class RegistrationManager
             && now - (r.DecidedAt ?? r.CreatedAt) > retention));
 
         Limits.Cleanup(Day, now);
+        MaintainCodes(now);
     }
 
     /// <summary>Contul Emby a fost sters: pastram doar urma cererii, fara datele personale.</summary>
