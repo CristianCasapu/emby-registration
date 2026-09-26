@@ -204,21 +204,46 @@ public sealed partial class RegistrationManager
 
     // --- Verificarea username-ului ---------------------------------------------------------------
 
+    /// <summary>
+    /// Numele e disponibil? Raspunde doar cererilor din pagina deschisa legitim (tokenul
+    /// formularului legat de adresa, codul de acces, aceeasi origine), cu limita pe adresa.
+    /// Orice alt caz (nume ocupat, rezervat, invalid, cerere refuzata) e „nu”.
+    /// </summary>
+    public bool IsUsernameAvailable(string? username, string? formToken, string? device, Origin origin, DateTimeOffset now)
+    {
+        var settings = Settings;
+        if (!origin.IsAdmin)
+        {
+            var key = "check:" + RateLimiter.IpKey(origin.Ip);
+            if (!Limits.Allows(key, 60, TimeSpan.FromMinutes(10), now))
+            {
+                return false;
+            }
+
+            Limits.Record(key, now);
+            if (settings.RequireSameOrigin && !SameOrigin(origin))
+            {
+                return false;
+            }
+
+            if (Tokens.Verify(formToken, origin.Ip, now).Error != null)
+            {
+                return false;
+            }
+
+            var ip = RateLimiter.Normalize(origin.Ip)?.ToString();
+            if (settings.RequireAccessCode && PassKind(origin.PassCookie, origin.DeviceCookie ?? device, ip, now) == null)
+            {
+                return false;
+            }
+        }
+
+        return CheckUsername(username, origin, now) == null;
+    }
+
     public string? CheckUsername(string? username, Origin origin, DateTimeOffset now)
     {
-        var key = "check:" + RateLimiter.IpKey(origin.Ip);
-        if (!Limits.Allows(key, 60, TimeSpan.FromMinutes(10), now))
-        {
-            return "rate_limited";
-        }
-
-        Limits.Record(key, now);
         var settings = Settings;
-        if (settings.RequireSameOrigin && !SameOrigin(origin))
-        {
-            return "rate_limited";
-        }
-
         var normalized = Validators.NormalizeUsername(username);
         return Validators.Username(normalized, settings.UsernameMinLength, settings.UsernameMaxLength, Validators.Lines(settings.ReservedUsernames))
             ?? (UsernameTaken(normalized) ? "username_taken" : null);

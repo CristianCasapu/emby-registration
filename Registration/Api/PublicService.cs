@@ -46,9 +46,14 @@ public sealed class GetRegistrationInfo : IReturn<RegistrationInfo>
 
 [Route("/Registration/CheckUsername", "POST", Summary = "Verifica daca un nume de utilizator e disponibil")]
 [Unauthenticated]
-public sealed class CheckUsername : IReturn<UsernameCheck>
+public sealed class CheckUsername : IReturn<bool>
 {
     public string? Username { get; set; }
+
+    /// <summary>Tokenul formularului (din Info).</summary>
+    public string? Token { get; set; }
+
+    public string? Device { get; set; }
 }
 
 [Route("/Registration/Submit", "POST", Summary = "Trimite o cerere de cont")]
@@ -343,8 +348,8 @@ public sealed partial class PublicService : IService, IRequiresRequest
 
     public object Post(CheckUsername request)
     {
-        var error = Manager.CheckUsername(request.Username, Origin(), DateTimeOffset.UtcNow);
-        return Json(new UsernameCheck { Available = error == null, Error = error });
+        var available = Manager.IsUsernameAvailable(request.Username, request.Token, request.Device, Origin(), DateTimeOffset.UtcNow);
+        return _resultFactory.GetResult(Request, (available ? "true" : "false").AsSpan(), "application/json", Headers());
     }
 
     public async Task<object> Post(SubmitRegistration request)
@@ -442,6 +447,7 @@ public sealed partial class PublicService : IService, IRequiresRequest
                     result.Fields[key] = result.Fields[key] switch
                     {
                         "email_blocked" => "email_rejected",
+                        "username_taken" or "username_reserved" => "username_unavailable",
                         "phone_taken" or "phone_country" => "phone_rejected",
                         "invite_invalid" => "invite_invalid",
                         var other => other,

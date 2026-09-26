@@ -47,6 +47,7 @@ Jurnal de progres (se completează pe parcurs):
 | 2026-09-25 | 100c699 | Publicat pe GitHub (public) |
 | 2026-09-25 | v0.9.0 | Primul release (pre-release), publicat de GitHub Actions, semnătură verificată |
 | 2026-09-25 | v1.0.0 | Release 1.0.0, instalat pe server prin actualizarea din plugin |
+| 2026-09-26 | v1.8.0 | Nume de utilizator verificat pe loc; butonul de trimitere activ doar cu nume disponibil; serverul răspunde doar true/false și doar paginii legitime |
 | 2026-09-26 | v1.7.0 | Mobil: țara telefonului după vizitator, curățare caractere invizibile, proof-of-work cu rezervă pe pagină, rezumat erori lângă buton, rapoarte din browser în jurnal |
 | 2026-09-26 | v1.6.2 | Live TV pornit pentru conturile noi (canalele pentru adulți rămân blocate de Headend); reaplicare la aprobare rapidă |
 | 2026-09-26 | v1.6.0 | Cod de familie static (nu se consumă, fără reguli de adresă comună) |

@@ -48,6 +48,8 @@
             show: 'Arată',
             hide: 'Ascunde',
             working: 'Se verifică…',
+            checkingName: 'Se verifică numele de utilizator…',
+            chooseName: 'Alege un nume de utilizator disponibil.',
             waitSeconds: 'Poți trimite formularul în câteva secunde.',
             openEmby: 'Intră în Emby',
             appsHelp: 'În aplicațiile Emby (Android, iOS, Android TV, Fire TV, Samsung, LG) alege „Adaugă server” și introdu adresa:',
@@ -70,8 +72,7 @@
                 required: 'Câmp obligatoriu.',
                 username_length: 'Între {min} și {max} caractere.',
                 username_chars: 'Doar litere mici fără diacritice, cifre și . _ - (nu la început sau sfârșit, nu două la rând).',
-                username_reserved: 'Acest nume nu poate fi folosit.',
-                username_taken: 'Numele este deja folosit. Alege altul.',
+                username_unavailable: 'Numele nu este disponibil.',
                 name_invalid: 'Folosește doar litere, spațiu, cratimă sau apostrof.',
                 email_invalid: 'Adresa de e-mail nu pare corectă.',
                 email_rejected: 'Adresa nu este acceptată.',
@@ -142,6 +143,8 @@
             show: 'Show',
             hide: 'Hide',
             working: 'Checking…',
+            checkingName: 'Checking the username…',
+            chooseName: 'Choose an available username.',
             waitSeconds: 'You can submit the form in a few seconds.',
             openEmby: 'Open Emby',
             appsHelp: 'In the Emby apps (Android, iOS, Android TV, Fire TV, Samsung, LG) choose "Add server" and enter:',
@@ -164,8 +167,7 @@
                 required: 'Required.',
                 username_length: 'Between {min} and {max} characters.',
                 username_chars: 'Only lowercase letters, digits and . _ - (not at the start or end, not two in a row).',
-                username_reserved: 'This name cannot be used.',
-                username_taken: 'This name is taken. Please choose another.',
+                username_unavailable: 'This name is not available.',
                 name_invalid: 'Use only letters, spaces, hyphens or apostrophes.',
                 email_invalid: 'This email address does not look right.',
                 email_rejected: 'This address is not accepted.',
@@ -676,6 +678,18 @@
 
     // --- Disponibilitatea username-ului ----------------------------------------------------------
 
+    // Butonul de trimitere e activ doar cand serverul a confirmat ca numele e disponibil.
+    var usernameState = 'unknown';
+    var submitting = false;
+
+    function updateSubmit() {
+        var ready = usernameState === 'ok';
+        $('submit').disabled = submitting || !ready;
+        if (!submitting) {
+            $('submitNote').textContent = ready ? '' : usernameState === 'checking' ? t('checkingName') : t('chooseName');
+        }
+    }
+
     function checkUsername() {
         var box = document.querySelector('[data-field="username"]');
         var status = $('usernameStatus');
@@ -684,24 +698,38 @@
         status.className = 'status';
         status.textContent = '';
         box.classList.remove('valid');
-        if (usernameError(value)) { return; }
         var seq = ++usernameSeq;
+        if (usernameError(value)) {
+            usernameState = 'bad';
+            updateSubmit();
+            return;
+        }
+        usernameState = 'checking';
+        updateSubmit();
         status.className = 'status wait';
-        api('CheckUsername', { Username: value }).then(function (result) {
+        api('CheckUsername', { Username: value, Token: info && info.Token, Device: storedDevice() }).then(function (available) {
             if (seq !== usernameSeq) { return; }
-            status.className = 'status';
-            if (result.Available) {
+            if (available === true) {
+                usernameState = 'ok';
                 status.className = 'status ok';
                 status.textContent = '✓';
                 box.classList.add('valid');
-            } else if (result.Error && result.Error !== 'rate_limited') {
+                setError('username', null);
+            } else {
+                usernameState = 'bad';
                 status.className = 'status bad';
                 status.textContent = '✕';
-                box.dataset.serverError = result.Error;
-                setError('username', result.Error);
+                box.dataset.serverError = 'username_unavailable';
+                setError('username', 'username_unavailable');
             }
+            updateSubmit();
         }).catch(function () {
-            if (seq === usernameSeq) { status.className = 'status'; }
+            if (seq !== usernameSeq) { return; }
+            status.className = 'status';
+            usernameState = 'unknown';
+            updateSubmit();
+            report('username_check', 'network');
+            setTimeout(function () { if (seq === usernameSeq) { checkUsername(); } }, 3000);
         });
     }
 
@@ -761,9 +789,11 @@
 
     function setBusy(busy, note) {
         var button = $('submit');
-        button.disabled = busy;
+        submitting = busy;
+        button.disabled = busy || usernameState !== 'ok';
         button.querySelector('.busy').classList.toggle('hidden', !busy);
         $('submitNote').textContent = note || '';
+        if (!busy) { updateSubmit(); }
     }
 
     function formError(code, values) {
@@ -775,6 +805,10 @@
 
     function onSubmit(event) {
         event.preventDefault();
+        if (usernameState !== 'ok' || submitting) {
+            updateSubmit();
+            return;
+        }
         formError(null);
         var ok = true;
         FIELDS.forEach(function (f) {
@@ -836,6 +870,9 @@
             Object.keys(result.Fields || {}).forEach(function (field) {
                 if (field === 'username') {
                     document.querySelector('[data-field="username"]').dataset.serverError = result.Fields[field];
+                    usernameState = 'bad';
+                    $('usernameStatus').className = 'status bad';
+                    $('usernameStatus').textContent = '✕';
                 }
                 setError(field, result.Fields[field]);
             });
@@ -978,6 +1015,7 @@
         restoreDraft();
         loadTurnstile();
         show('form');
+        checkUsername();
         $('username').focus({ preventScroll: true });
     }
 
@@ -1015,6 +1053,8 @@
                 try { el.setSelectionRange(pos, pos); } catch (e) { /* */ }
             }
             clearTimeout(usernameTimer);
+            usernameState = 'checking';
+            updateSubmit();
             usernameTimer = setTimeout(checkUsername, 500);
         });
 
