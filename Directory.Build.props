@@ -31,7 +31,7 @@
   <PropertyGroup>
     <Product>Înregistrare</Product>
     <Authors>Cristian Casapu</Authors>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <RepositoryUrl>https://github.com/CristianCasapu/emby-registration</RepositoryUrl>
     <Copyright>Copyright © Cristian Casapu</Copyright>
   </PropertyGroup>
