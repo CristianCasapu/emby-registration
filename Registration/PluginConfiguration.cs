@@ -119,6 +119,58 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Adrese sau retele (CIDR) interzise, una pe linie.</summary>
     public string BlockedIps { get; set; } = string.Empty;
 
+    // --- Conturi multiple -------------------------------------------------------------------
+
+    /// <summary>Cat timp tine minte plugin-ul adresele si dispozitivele cererilor (IP-urile sunt dinamice).</summary>
+    public int DuplicateWindowDays { get; set; } = 30;
+
+    /// <summary>Acelasi dispozitiv (identificator in cookie/localStorage sau cont Emby deja conectat in browser).</summary>
+    public string SameDeviceAction { get; set; } = DuplicateActions.Block;
+
+    /// <summary>Aceeasi adresa IP ca o cerere anterioara din fereastra de timp.</summary>
+    public string SameIpAction { get; set; } = DuplicateActions.Block;
+
+    /// <summary>Aceeasi adresa IP ca un dispozitiv al unui cont existent, activ recent.</summary>
+    public string ExistingUserIpAction { get; set; } = DuplicateActions.Block;
+
+    public int ExistingUserIpDays { get; set; } = 14;
+
+    /// <summary>Aceeasi retea (/24 IPv4, /64 IPv6).</summary>
+    public string SameSubnetAction { get; set; } = DuplicateActions.Flag;
+
+    /// <summary>Aceeasi amprenta de browser si aceeasi retea.</summary>
+    public string FingerprintSubnetAction { get; set; } = DuplicateActions.Block;
+
+    /// <summary>Aceeasi amprenta de browser, din alta retea (telefoanele de acelasi model seamana).</summary>
+    public string FingerprintAction { get; set; } = DuplicateActions.Flag;
+
+    public string SamePhoneAction { get; set; } = DuplicateActions.Block;
+
+    // --- Vizitatori legitimi -------------------------------------------------------------------
+
+    /// <summary>Retele de centre de date, cloud si VPN comerciale.</summary>
+    public bool BlockDatacenters { get; set; } = true;
+
+    public bool BlockTor { get; set; } = true;
+
+    /// <summary>Tarile (coduri ISO, dupa Cloudflare) din care se poate deschide pagina; gol = toate.</summary>
+    public string AllowedVisitorCountries { get; set; } = string.Empty;
+
+    /// <summary>Baza GeoLite2-ASN; gol = cea a plugin-ului Jurnal de acces.</summary>
+    public string AsnDatabasePath { get; set; } = string.Empty;
+
+    /// <summary>Cererea trebuie sa vina din pagina (antetele Origin / Sec-Fetch-Site ale browserului).</summary>
+    public bool RequireSameOrigin { get; set; } = true;
+
+    /// <summary>Refuza browserele conduse de programe (navigator.webdriver, Chrome headless).</summary>
+    public bool BlockAutomation { get; set; } = true;
+
+    /// <summary>Cere tastare sau atingeri reale (evenimente generate de utilizator).</summary>
+    public bool RequireInteraction { get; set; } = true;
+
+    /// <summary>Proof-of-work mai greu cand vin multe cereri.</summary>
+    public bool AdaptiveProofOfWork { get; set; } = true;
+
     // --- Notificari si e-mail ------------------------------------------------------------------
 
     public string SmtpHost { get; set; } = string.Empty;
@@ -182,6 +234,13 @@ public class PluginConfiguration : BasePluginConfiguration
 
     /// <summary>Cheia HMAC pentru tokenurile de formular; generata la prima pornire.</summary>
     public string FormSecret { get; set; } = string.Empty;
+}
+
+public static class DuplicateActions
+{
+    public const string Block = "Block";
+    public const string Flag = "Flag";
+    public const string Off = "Off";
 }
 
 public static class RegistrationModes

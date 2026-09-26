@@ -45,10 +45,40 @@ public class SubmitForm
     public bool Consent { get; set; }
 
     public string? Language { get; set; }
+
+    /// <summary>Identificatorul dispozitivului din localStorage (daca cookie-ul lipseste).</summary>
+    public string? Device { get; set; }
+
+    /// <summary>Amprenta browserului, calculata in pagina.</summary>
+    public string? Fingerprint { get; set; }
+
+    /// <summary>Id-urile conturilor Emby cu care browserul e conectat in interfata web.</summary>
+    public string[]? EmbyUsers { get; set; }
+
+    /// <summary>Semne de automatizare vazute in pagina (ex. „webdriver,headless”).</summary>
+    public string? Automation { get; set; }
+
+    /// <summary>Evenimente de introducere generate de utilizator (isTrusted).</summary>
+    public int Inputs { get; set; }
+
+    /// <summary>Apasari de taste, atingeri si clicuri generate de utilizator.</summary>
+    public int Gestures { get; set; }
 }
 
 /// <summary>Cine trimite: adresa, tara Cloudflare, browserul.</summary>
-public sealed record Origin(IPAddress? Ip, string? IpCountry, string? UserAgent);
+public sealed record Origin(IPAddress? Ip, string? IpCountry, string? UserAgent)
+{
+    /// <summary>Antetul Origin al cererii POST.</summary>
+    public string? OriginHeader { get; init; }
+
+    public string? Host { get; init; }
+
+    /// <summary>Antetul Sec-Fetch-Site trimis de browsere.</summary>
+    public string? FetchSite { get; init; }
+
+    /// <summary>Identificatorul de dispozitiv din cookie.</summary>
+    public string? DeviceCookie { get; init; }
+}
 
 public sealed class SubmitResult
 {
@@ -75,7 +105,7 @@ public sealed class SubmitResult
 /// plugin (o primeste doar Emby), iar username-ul e rezervat. Aprobarea doar il
 /// activeaza; respingerea sau expirarea il sterg.
 /// </summary>
-public sealed class RegistrationManager
+public sealed partial class RegistrationManager
 {
     private static readonly TimeSpan Hour = TimeSpan.FromHours(1);
     private static readonly TimeSpan Day = TimeSpan.FromDays(1);
@@ -92,6 +122,7 @@ public sealed class RegistrationManager
         Notifier = notifier;
         Web = web;
         Tokens = new FormToken(() => Convert.FromBase64String(Settings.FormSecret));
+        Devices = new DeviceIdentity(() => Convert.FromBase64String(Settings.FormSecret));
     }
 
     public RequestStore Store { get; }
@@ -169,6 +200,11 @@ public sealed class RegistrationManager
 
         Limits.Record(key, now);
         var settings = Settings;
+        if (settings.RequireSameOrigin && !SameOrigin(origin))
+        {
+            return "rate_limited";
+        }
+
         var normalized = Validators.NormalizeUsername(username);
         return Validators.Username(normalized, settings.UsernameMinLength, settings.UsernameMaxLength, Validators.Lines(settings.ReservedUsernames))
             ?? (UsernameTaken(normalized) ? "username_taken" : null);
@@ -226,6 +262,20 @@ public sealed class RegistrationManager
         Limits.Record(netKey, now);
         Limits.Record("global", now);
 
+        if (settings.RequireSameOrigin && !SameOrigin(origin))
+        {
+            Store.Count("bot_origin", now);
+            return SubmitResult.Fail("Invalid", "bot_check");
+        }
+
+        var network = Network(origin);
+        var gate = GateVisitor(origin, network);
+        if (gate != null)
+        {
+            Store.Count(gate, now);
+            return SubmitResult.Fail("Closed", gate);
+        }
+
         // Capcana: raspundem ca si cum cererea ar fi reusit, ca robotul sa nu invete nimic.
         if (!string.IsNullOrEmpty(form.Website))
         {
@@ -259,7 +309,38 @@ public sealed class RegistrationManager
             return SubmitResult.Fail("Invalid", "bot_check");
         }
 
+        if (settings.BlockAutomation && !string.IsNullOrEmpty(form.Automation))
+        {
+            Store.Count("bot_automation", now);
+            _logger.Info("Inregistrare: browser automatizat refuzat ({0}) de la {1}", form.Automation, origin.Ip);
+            return SubmitResult.Fail("Invalid", "bot_check");
+        }
+
+        if (settings.RequireInteraction && (form.Inputs < 6 || form.Gestures < 1))
+        {
+            Store.Count("bot_interaction", now);
+            return SubmitResult.Fail("Invalid", "bot_check");
+        }
+
         var input = Normalize(form);
+        var evidence = new DeviceEvidence
+        {
+            Device = origin.DeviceCookie ?? form.Device,
+            Fingerprint = CleanFingerprint(form.Fingerprint),
+            EmbyUsers = form.EmbyUsers ?? Array.Empty<string>(),
+        };
+        var signals = FindDuplicates(evidence, origin, network, input.Phone, now);
+        var block = signals.FirstOrDefault(x => x.Action == DuplicateActions.Block);
+        if (block != null)
+        {
+            Store.Count("dup_" + block.Code, now);
+            _logger.Info("Inregistrare: cerere refuzata ({0}: {1}) de la {2}", block.Code, block.Detail, origin.Ip);
+            var reason = BlockReason(block);
+            return reason == "phone_taken"
+                ? new SubmitResult { Outcome = "Invalid", Error = "fields", Fields = { ["phone"] = reason } }
+                : SubmitResult.Fail("Blocked", reason);
+        }
+
         var fields = Validate(input, form, settings, now);
         if (fields.Count == 0 && settings.CheckPwnedPasswords)
         {
@@ -286,7 +367,7 @@ public sealed class RegistrationManager
         await _submitLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return await CreateAsync(input, form, origin, settings, now).ConfigureAwait(false);
+            return await CreateAsync(input, form, origin, settings, now, evidence, network, signals).ConfigureAwait(false);
         }
         finally
         {
@@ -364,7 +445,12 @@ public sealed class RegistrationManager
         return fields;
     }
 
-    private async Task<SubmitResult> CreateAsync(Input input, SubmitForm form, Origin origin, PluginConfiguration settings, DateTimeOffset now)
+    internal static string? CleanFingerprint(string? value) =>
+        value is { Length: >= 8 and <= 64 } && value.All(char.IsAsciiHexDigit) ? value.ToLowerInvariant() : null;
+
+    private async Task<SubmitResult> CreateAsync(
+        Input input, SubmitForm form, Origin origin, PluginConfiguration settings, DateTimeOffset now,
+        DeviceEvidence evidence, Registration.Network.NetworkInfo network, List<DuplicateSignal> signals)
     {
         // Verificare repetata sub lacat: doua cereri simultane cu acelasi nume.
         if (UsernameTaken(input.Username))
@@ -430,6 +516,13 @@ public sealed class RegistrationManager
             Language = input.Language,
             CreatedAt = now,
             ConsentAt = form.Consent ? now : null,
+            Subnet = RateLimiter.SubnetKey(origin.Ip),
+            DeviceHash = Devices.Verify(evidence.Device) is { } deviceId ? Devices.Hash(deviceId) : null,
+            Fingerprint = evidence.Fingerprint,
+            Asn = network.Asn,
+            NetworkName = network.Organization,
+            NetworkKind = network.Kind,
+            Flags = signals.Where(x => x.Action == DuplicateActions.Flag).Select(x => x.Detail).ToList(),
         };
 
         if (confirmEmail)
@@ -482,7 +575,8 @@ public sealed class RegistrationManager
 
         Notifier.Notify(NotifyEvents.NewRequest,
             status == RequestStatus.Approved ? $"Înregistrare: cont nou {record.Username}" : $"Înregistrare: cerere nouă de la {record.Username}",
-            Describe(record) + (status == RequestStatus.EmailPending ? " Așteaptă confirmarea adresei de e-mail." : status == RequestStatus.Pending ? " Așteaptă aprobarea." : " Aprobat automat."));
+            Describe(record) + (record.Flags.Count > 0 ? " Atenție: " + string.Join("; ", record.Flags) + "." : string.Empty)
+                + (status == RequestStatus.EmailPending ? " Așteaptă confirmarea adresei de e-mail." : status == RequestStatus.Pending ? " Așteaptă aprobarea." : " Aprobat automat."));
 
         return new SubmitResult { Status = status };
     }
@@ -802,6 +896,11 @@ public sealed class RegistrationManager
         r.Email = string.Empty;
         r.Phone = string.Empty;
         r.Ip = string.Empty;
+        r.Subnet = null;
+        r.Fingerprint = null;
+        r.DeviceHash = null;
+        r.NetworkName = null;
+        r.Flags.Clear();
         r.UserAgent = null;
         r.EmailTokenHash = null;
     }

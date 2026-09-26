@@ -27,6 +27,29 @@ tools/install-login-button.sh status
 
 Scriptul adaugă în `index.html`-ul Emby o linie care încarcă `/emby/Registration/Assets/login.js` (servit de plugin). La actualizarea Emby, `index.html` se rescrie: rulați din nou scriptul. Aplicațiile Emby (Android, iOS, televizoare) au propriul ecran de conectare, pe care nu îl poate modifica nimeni din server: acolo trimiteți linkul paginii (sau folosiți „Trimite acces”).
 
+## Un cont per persoană
+
+Adresele IP sunt de obicei dinamice, așa că plugin-ul le compară doar pe o perioadă (30 de zile) și le combină cu semne ale dispozitivului. Fiecare regulă poate bloca, semnala adminului sau fi oprită:
+
+| Semn | Implicit |
+|---|---|
+| Același dispozitiv: identificator semnat în cookie + `localStorage` | blochează |
+| Browserul e deja conectat la Emby cu un cont (stocarea locală a interfeței web, aceeași origine) | blochează |
+| Aceeași adresă IP ca o cerere din ultimele 30 de zile | blochează |
+| Aceeași adresă IP ca un dispozitiv al unui cont existent, activ în ultimele 14 zile | blochează |
+| Același browser (amprentă) și aceeași rețea | blochează |
+| Același număr de telefon | blochează |
+| Aceeași rețea (/24, /64) sau același browser din altă rețea | semnalează |
+
+Cloudflare WARP (1.1.1.1) ascunde adresa reală și e comun multor oameni: regulile pe adresă doar semnalează. Semnalările apar lângă cerere în tab-ul Cereri și în notificare.
+
+## Doar vizitatori legitimi
+
+- Pagina nu se deschide din centre de date, cloud sau VPN-uri comerciale (după furnizorul adresei, din baza GeoLite2-ASN a plugin-ului [Jurnal de acces](https://github.com/CristianCasapu/emby-access-log)) și nici din Tor. Opțional, doar din anumite țări.
+- Cererile trebuie să vină din pagină (`Origin` și `Sec-Fetch-Site` ale browserului): un script care trimite direct la API e refuzat.
+- Browserele automatizate (`navigator.webdriver`, Chrome headless, Puppeteer, Playwright) sunt refuzate; formularul cere tastare sau atingeri reale (`isTrusted`).
+- Proof-of-work-ul devine mai greu când vin multe cereri.
+
 ## Protecție anti-roboți și securitate
 
 | Strat | Ce face |

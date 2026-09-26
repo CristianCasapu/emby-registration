@@ -2,6 +2,7 @@ using System.Net;
 using MediaBrowser.Controller.Net;
 using MediaBrowser.Model.Services;
 using Registration.Flow;
+using Registration.Security;
 using Registration.Validation;
 
 namespace Registration.Api;
@@ -24,6 +25,11 @@ public sealed class GetRegistrationAsset : IReturn<string>
 [Unauthenticated]
 public sealed class GetRegistrationInfo : IReturn<RegistrationInfo>
 {
+    /// <summary>Identificatorul de dispozitiv din localStorage (cand cookie-ul lipseste).</summary>
+    public string? Device { get; set; }
+
+    /// <summary>Id-urile conturilor Emby conectate in acest browser, separate prin virgula.</summary>
+    public string? Users { get; set; }
 }
 
 [Route("/Registration/CheckUsername", "POST", Summary = "Verifica daca un nume de utilizator e disponibil")]
@@ -54,6 +60,15 @@ public sealed class RegistrationInfo
     public string? ClosedReason { get; set; }
 
     public string? ClosedMessage { get; set; }
+
+    /// <summary>La „signed_in”: numele contului cu care browserul e deja conectat.</summary>
+    public string? ClosedDetail { get; set; }
+
+    /// <summary>Identificatorul de dispozitiv, pentru copia din localStorage.</summary>
+    public string? Device { get; set; }
+
+    /// <summary>Id-ul serverului, pentru a gasi conturile Emby din stocarea locala.</summary>
+    public string? ServerId { get; set; }
 
     public string ServerName { get; set; } = string.Empty;
 
@@ -161,7 +176,46 @@ public sealed class PublicService : IService, IRequiresRequest
         var manager = Manager;
         var settings = RegistrationManager.Settings;
         var now = DateTimeOffset.UtcNow;
-        var closed = manager.ClosedReason(now);
+        var origin = Origin();
+        var headers = Headers();
+
+        // Identificatorul dispozitivului: din cookie, altfel din localStorage, altfel unul nou.
+        var device = manager.Devices.Verify(origin.DeviceCookie) != null ? origin.DeviceCookie!
+            : manager.Devices.Verify(request.Device) != null ? request.Device! : manager.Devices.Issue();
+        var secure = Request.IsSecureConnection || string.Equals(Request.XForwardedProtocol, "https", StringComparison.OrdinalIgnoreCase)
+            || settings.PublicUrl.StartsWith("https:", StringComparison.OrdinalIgnoreCase);
+        headers["Set-Cookie"] = $"{DeviceIdentity.CookieName}={device}; Path=/; Max-Age=34560000; HttpOnly; SameSite=Strict" + (secure ? "; Secure" : string.Empty);
+
+        string? closed = null;
+        string? detail = null;
+        var infoKey = "info:" + RateLimiter.IpKey(origin.Ip);
+        if (!manager.Limits.Allows(infoKey, 60, TimeSpan.FromMinutes(10), now))
+        {
+            closed = "rate_limited";
+        }
+
+        manager.Limits.Record(infoKey, now);
+        closed ??= manager.ClosedReason(now);
+        if (closed == null)
+        {
+            var network = manager.Network(origin);
+            closed = manager.GateVisitor(origin, network);
+            if (closed == null)
+            {
+                var evidence = new DeviceEvidence
+                {
+                    Device = device,
+                    EmbyUsers = (request.Users ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                };
+                var block = manager.FindDuplicates(evidence, origin, network, null, now).FirstOrDefault(x => x.Action == DuplicateActions.Block);
+                if (block != null)
+                {
+                    closed = RegistrationManager.BlockReason(block);
+                    detail = block.Code == "signed_in" ? block.Detail[(block.Detail.LastIndexOf(' ') + 1)..] : null;
+                }
+            }
+        }
+
         var allowed = Validators.Lines(settings.AllowedCountries).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var info = new RegistrationInfo
@@ -172,15 +226,19 @@ public sealed class PublicService : IService, IRequiresRequest
             ServerName = manager.ServerName(manager.DefaultServerName),
             Mode = settings.Mode,
             ServerUrl = string.IsNullOrWhiteSpace(settings.PublicUrl) ? null : settings.PublicUrl.Trim().TrimEnd('/'),
+            ClosedDetail = detail,
+            Device = device,
+            ServerId = manager.ServerId,
         };
 
         if (closed != null)
         {
-            return Json(info);
+            return _resultFactory.GetResult(Request, info, headers);
         }
 
-        info.Token = manager.Tokens.Issue(Request.RemoteIp, manager.PowBits, now);
-        info.PowBits = manager.PowBits;
+        var bits = manager.CurrentPowBits(now);
+        info.Token = manager.Tokens.Issue(Request.RemoteIp, bits, now);
+        info.PowBits = bits;
         info.TurnstileSiteKey = string.IsNullOrWhiteSpace(settings.TurnstileSiteKey) || string.IsNullOrWhiteSpace(settings.TurnstileSecretKey)
             ? null : settings.TurnstileSiteKey.Trim();
         info.MinFillSeconds = settings.MinFillSeconds;
@@ -193,7 +251,7 @@ public sealed class PublicService : IService, IRequiresRequest
         info.PasswordMinLength = Math.Max(8, settings.PasswordMinLength);
         info.DefaultCountry = settings.DefaultCountry;
         info.Countries = PhoneNumbers.Countries.Where(c => allowed.Count == 0 || allowed.Contains(c.Iso)).ToList();
-        return Json(info);
+        return _resultFactory.GetResult(Request, info, headers);
     }
 
     public object Post(CheckUsername request)
@@ -222,11 +280,23 @@ public sealed class PublicService : IService, IRequiresRequest
 
     private object Json<T>(T value) where T : class => _resultFactory.GetResult(Request, value, Headers());
 
-    private Origin Origin() => new(Request.RemoteIp, Header("CF-IPCountry"), Request.UserAgent);
+    private Origin Origin() => new(Request.RemoteIp, Country(), Request.UserAgent)
+    {
+        OriginHeader = RawHeader("Origin"),
+        Host = RawHeader("Host"),
+        FetchSite = RawHeader("Sec-Fetch-Site")?.ToLowerInvariant(),
+        DeviceCookie = DeviceIdentity.FromCookieHeader(RawHeader("Cookie")),
+    };
 
-    private string? Header(string name)
+    private string? RawHeader(string name)
     {
         var value = Request.Headers.FirstOrDefault(h => string.Equals(h.Name, name, StringComparison.OrdinalIgnoreCase))?.Value;
-        return string.IsNullOrWhiteSpace(value) || value.Length > 8 ? null : value.Trim().ToUpperInvariant();
+        return string.IsNullOrWhiteSpace(value) || value.Length > 4096 ? null : value.Trim();
+    }
+
+    private string? Country()
+    {
+        var value = RawHeader("CF-IPCountry");
+        return value == null || value.Length > 8 ? null : value.ToUpperInvariant();
     }
 }

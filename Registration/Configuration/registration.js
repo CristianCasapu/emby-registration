@@ -5,6 +5,8 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
 
     // Setarile simple, descrise o singura data. Valorile implicite (def) trebuie sa fie
     // aceleasi cu cele din PluginConfiguration.cs.
+    var ACTIONS = [['Block', 'Blochează'], ['Flag', 'Semnalează'], ['Off', 'Ignoră']];
+
     var GROUPS = [
         {
             id: 'general', icon: 'toggle_on', title: 'Stare',
@@ -66,6 +68,35 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
                 { key: 'RemoteBitrateLimitMbps', type: 'int', def: 0, min: 0, max: 1000, unit: 'Mbps', label: 'Bitrate maxim în afara rețelei', help: '0 = fără limită.' },
                 { key: 'AccountExpiryDays', type: 'int', def: 0, min: 0, max: 3650, unit: 'zile', label: 'Cont de probă: dezactivat după', help: 'Numărate de la aprobare. 0 = contul nu expiră.' },
                 { key: 'EnforcePolicy', type: 'bool', def: true, label: 'Paznic de politică', help: 'Retrage drepturile interzise dacă apar la un cont gestionat. Oprit: plugin-ul le aplică doar la creare.' }
+            ]
+        },
+        {
+            id: 'multi', icon: 'devices', title: 'Un cont per persoană',
+            desc: 'Adresele IP se schimbă (majoritatea sunt dinamice), așa că se compară doar pe o perioadă. Un dispozitiv se recunoaște după un identificator păstrat în browser, după conturile Emby deja conectate în el și după amprenta browserului. „Semnalează” lasă cererea să treacă, dar o marchează în tab-ul Cereri.',
+            fields: [
+                { key: 'DuplicateWindowDays', type: 'int', def: 30, min: 1, max: 365, unit: 'zile', label: 'Ține minte adresele cererilor', help: 'O adresă IP sau o rețea folosită la o cerere nu mai poate fi folosită atâtea zile.' },
+                { key: 'SameDeviceAction', type: 'select', def: 'Block', options: ACTIONS, label: 'Același dispozitiv', help: 'Identificatorul din browser, sau browserul e deja conectat cu un cont Emby.' },
+                { key: 'SameIpAction', type: 'select', def: 'Block', options: ACTIONS, label: 'Aceeași adresă IP ca altă cerere' },
+                { key: 'ExistingUserIpAction', type: 'select', def: 'Block', options: ACTIONS, label: 'Aceeași adresă IP ca un cont existent', help: 'Adresa unui dispozitiv cu care s-a conectat un cont Emby existent (inclusiv cele create manual).' },
+                { key: 'ExistingUserIpDays', type: 'int', def: 14, min: 1, max: 365, unit: 'zile', label: 'Dispozitive active în ultimele' },
+                { key: 'SameSubnetAction', type: 'select', def: 'Flag', options: ACTIONS, label: 'Aceeași rețea (/24, /64)', help: 'Vecini la același furnizor sau aceeași casă cu adresă schimbată.' },
+                { key: 'FingerprintSubnetAction', type: 'select', def: 'Block', options: ACTIONS, label: 'Același browser și aceeași rețea' },
+                { key: 'FingerprintAction', type: 'select', def: 'Flag', options: ACTIONS, label: 'Același browser, altă rețea', help: 'Telefoanele de același model au adesea aceeași amprentă: implicit doar semnalat.' },
+                { key: 'SamePhoneAction', type: 'select', def: 'Block', options: ACTIONS, label: 'Același număr de telefon' }
+            ]
+        },
+        {
+            id: 'visitors', icon: 'travel_explore', title: 'Doar vizitatori legitimi',
+            desc: 'Verificări făcute chiar la deschiderea paginii și la trimitere. Cloudflare WARP (1.1.1.1) nu e blocat, dar adresa lui e comună multor oameni, deci regulile pe adresă doar semnalează.',
+            fields: [
+                { key: 'BlockDatacenters', type: 'bool', def: true, label: 'Refuză centrele de date și VPN-urile comerciale', help: 'AWS, Google Cloud, Azure, DigitalOcean, Hetzner, OVH, M247, Datacamp etc. După furnizorul adresei (baza GeoLite2-ASN a plugin-ului Jurnal de acces).' },
+                { key: 'BlockTor', type: 'bool', def: true, label: 'Refuză rețeaua Tor' },
+                { key: 'RequireSameOrigin', type: 'bool', def: true, label: 'Doar din pagina de înregistrare', help: 'Cererile trebuie să vină din pagina servită de acest server (antetele Origin și Sec-Fetch-Site ale browserului); un script care trimite direct la API e refuzat.' },
+                { key: 'BlockAutomation', type: 'bool', def: true, label: 'Refuză browserele automatizate', help: 'Browsere conduse de programe (navigator.webdriver, Chrome headless, Puppeteer, Playwright).' },
+                { key: 'RequireInteraction', type: 'bool', def: true, label: 'Cere tastare sau atingeri reale', help: 'Formularul trebuie completat de un om: evenimente de tastatură sau atingere generate de utilizator, nu de un script.' },
+                { key: 'AdaptiveProofOfWork', type: 'bool', def: true, label: 'Proof-of-work mai greu când vin multe cereri', help: '+1 bit peste 5 cereri pe oră, +2 peste 15 (de 4 ori mai greu).' },
+                { key: 'AllowedVisitorCountries', type: 'text', def: '', label: 'Doar din țările', placeholder: 'RO, MD', help: 'Coduri ISO, după Cloudflare. Gol: toate țările. Rețeaua locală e mereu permisă.' },
+                { key: 'AsnDatabasePath', type: 'text', def: '', wide: true, label: 'Baza GeoLite2-ASN', placeholder: '/var/lib/emby/plugins/AccessLog/geoip/GeoLite2-ASN.mmdb', help: 'Gol: cea descărcată de plugin-ul Jurnal de acces.' }
             ]
         },
         {
@@ -178,7 +209,12 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
     var STATS = {
         requests: 'Cereri primite', approved: 'Aprobate', rejected: 'Respinse', invalid: 'Câmpuri greșite', duplicate_email: 'E-mail repetat',
         rate_limited: 'Limită de încercări', blocked_ip: 'IP blocat', bot_honeypot: 'Robot: capcană', bot_token: 'Robot: fără token',
-        bot_token_reuse: 'Robot: token refolosit', bot_too_fast: 'Prea rapid', bot_pow: 'Robot: proof-of-work', bot_turnstile: 'Robot: Turnstile'
+        bot_token_reuse: 'Robot: token refolosit', bot_too_fast: 'Prea rapid', bot_pow: 'Robot: proof-of-work', bot_turnstile: 'Robot: Turnstile',
+        bot_origin: 'Robot: nu din pagină', bot_automation: 'Browser automatizat', bot_interaction: 'Fără interacțiune reală',
+        network_blocked: 'VPN / centru de date / Tor', country_blocked: 'Țară nepermisă',
+        dup_same_device: 'Același dispozitiv', dup_signed_in: 'Deja conectat cu un cont', dup_same_ip: 'Aceeași adresă IP',
+        dup_existing_ip: 'Adresa unui cont existent', dup_same_subnet: 'Aceeași rețea', dup_fingerprint_subnet: 'Același browser și rețea',
+        dup_fingerprint: 'Același browser', dup_same_phone: 'Același telefon'
     };
 
     function toast(text) {
@@ -461,9 +497,14 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
             '<span class="rg-sub">' + (r.Phone ? '<a href="tel:' + escapeHtml(r.Phone) + '">' + escapeHtml(r.Phone) + '</a>' : '—') + '</span>';
     }
 
+    function flags(r) {
+        return (r.Flags || []).map(function (f) { return '<span class="rg-sub" style="color:var(--rg-warn)">⚠ ' + escapeHtml(f) + '</span>'; }).join('');
+    }
+
     function origin(r) {
+        var net = r.NetworkName ? '<span class="rg-sub" title="AS' + escapeHtml(r.Asn || '') + '">' + escapeHtml(r.NetworkName) + (r.NetworkKind === 'warp' ? ' (WARP)' : '') + '</span>' : '';
         var ua = r.UserAgent ? '<span class="rg-sub" title="' + escapeHtml(r.UserAgent) + '">' + escapeHtml(shortAgent(r.UserAgent)) + '</span>' : '';
-        return (r.IpCountry ? flag(r.IpCountry) : '') + '<span class="rg-mono">' + escapeHtml(r.Ip || '—') + '</span>' + ua;
+        return (r.IpCountry ? flag(r.IpCountry) : '') + '<span class="rg-mono">' + escapeHtml(r.Ip || '—') + '</span>' + net + ua;
     }
 
     function shortAgent(ua) {
@@ -510,7 +551,7 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
                         '<td><input type="checkbox" class="chkRow" value="' + escapeHtml(r.Id) + '"' + (selected ? ' checked' : '') + ' aria-label="Selectează"></td>' +
                         '<td class="rg-nowrap">' + escapeHtml(formatDate(r.CreatedAt)) + (r.InviteCode ? '<span class="rg-sub rg-mono">' + escapeHtml(r.InviteCode) + '</span>' : '') + '</td>' +
                         '<td>' + person(r) + '</td><td>' + contact(r) + '</td><td>' + origin(r) + '</td>' +
-                        '<td>' + statusBadge(r.Status) + (!v.UserExists ? '<span class="rg-sub rg-error">contul Emby lipsește</span>' : '') + '</td>' +
+                        '<td>' + statusBadge(r.Status) + (!v.UserExists ? '<span class="rg-sub rg-error">contul Emby lipsește</span>' : '') + flags(r) + '</td>' +
                         '<td><div class="rg-actions-cell">' +
                         '<button type="button" class="rg-btn rg-btn-small rg-btn-primary" data-action="approve"><span class="md-icon">check</span>Aprobă</button>' +
                         '<button type="button" class="rg-btn rg-btn-small rg-btn-danger" data-action="reject"><span class="md-icon">close</span>Respinge</button>' +
@@ -536,7 +577,7 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
                     return '<tr data-id="' + escapeHtml(r.Id) + '">' +
                         '<td class="rg-nowrap">' + escapeHtml(formatDate(r.DecidedAt)) + '<span class="rg-sub">' + escapeHtml(r.DecidedBy || '') + '</span><span class="rg-sub">cerută ' + escapeHtml(formatDate(r.CreatedAt)) + '</span></td>' +
                         '<td>' + person(r) + '</td><td>' + contact(r) + '</td><td>' + origin(r) + '</td>' +
-                        '<td>' + statusBadge(r.Status) + detail + '</td>' +
+                        '<td>' + statusBadge(r.Status) + detail + flags(r) + '</td>' +
                         '<td><div class="rg-actions-cell">' +
                         (r.Status === 'Approved' && v.UserExists ? '<button type="button" class="rg-btn rg-btn-small" data-action="managed" title="' + (r.Managed ? 'Scoate contul de sub paznicul de politică (îi poți da drepturi în plus din Emby)' : 'Pune contul înapoi sub paznicul de politică') + '"><span class="md-icon">' + (r.Managed ? 'lock_open' : 'lock') + '</span>' + (r.Managed ? 'Eliberează' : 'Gestionează') + '</button>' : '') +
                         (r.Status === 'Approved' && v.UserExists ? '<button type="button" class="rg-btn rg-btn-small" data-action="share" title="Trimite datele de acces"><span class="md-icon">share</span></button>' : '') +

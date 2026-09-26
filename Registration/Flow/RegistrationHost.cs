@@ -1,10 +1,12 @@
 using MediaBrowser.Controller;
+using MediaBrowser.Controller.Devices;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Model.Activity;
 using MediaBrowser.Model.Events;
 using MediaBrowser.Model.Logging;
+using Registration.Network;
 using Registration.Notifications;
 using Registration.Security;
 using Registration.Storage;
@@ -21,11 +23,13 @@ public sealed class RegistrationHost : IServerEntryPoint
     private readonly IServerApplicationHost _appHost;
     private readonly ILogger _logger;
     private readonly IActivityManager _activity;
+    private readonly IDeviceManager _deviceManager;
     private Timer? _timer;
     private int _running;
 
-    public RegistrationHost(IUserManager userManager, IServerApplicationHost appHost, IActivityManager activity, ILogManager logManager)
+    public RegistrationHost(IUserManager userManager, IServerApplicationHost appHost, IActivityManager activity, IDeviceManager deviceManager, ILogManager logManager)
     {
+        _deviceManager = deviceManager;
         _userManager = userManager;
         _appHost = appHost;
         _activity = activity;
@@ -45,6 +49,10 @@ public sealed class RegistrationHost : IServerEntryPoint
         var manager = new RegistrationManager(_userManager, _logger, store, notifier, new WebChecks(_logger))
         {
             DefaultServerName = _appHost.FriendlyName ?? "Emby",
+            ServerId = _appHost.SystemId,
+            Networks = new NetworkClassifier(_logger),
+            DeviceManager = _deviceManager,
+            PluginsDataRoot = Path.GetDirectoryName(plugin.DataFolderPath) ?? "/var/lib/emby/plugins",
         };
         manager.Guard = new PolicyGuard(_userManager, store, _logger);
         Manager = manager;

@@ -14,6 +14,12 @@
             ended: 'Perioada de înregistrare s-a încheiat.',
             full: 'Numărul maxim de conturi a fost atins.',
             busy: 'Sunt multe cereri în așteptare. Încearcă din nou mai târziu.',
+            duplicate_device: 'De pe acest dispozitiv s-a cerut deja un cont. Dacă e o greșeală, contactează administratorul.',
+            duplicate_network: 'Din această rețea s-a cerut deja un cont recent. Dacă e o greșeală, contactează administratorul.',
+            signed_in: 'Pe acest browser ești deja conectat la server{name}. Nu ai nevoie de un cont nou.',
+            network_blocked: 'Înregistrarea nu este disponibilă prin VPN, proxy, Tor sau rețele de centre de date. Deconectează VPN-ul și încearcă din nou.',
+            country_blocked: 'Înregistrarea nu este disponibilă din țara ta.',
+            rate_limited: 'Prea multe încercări. Încearcă din nou mai târziu.',
             introApproval: 'Completează formularul. Contul devine activ după ce administratorul aprobă cererea; vei primi un e-mail.',
             introAutomatic: 'Completează formularul și contul tău va fi creat imediat.',
             introInvite: 'Ai nevoie de un cod de invitație de la administrator. Contul devine activ după aprobare.',
@@ -81,10 +87,11 @@
                 pin_weak: 'PIN-ul este prea simplu (ex. 1111, 1234).',
                 consent_required: 'Este necesar acordul tău.',
                 invite_invalid: 'Codul de invitație nu este valabil.',
+                phone_taken: 'Acest număr de telefon a fost deja folosit pentru un cont.',
                 token_invalid: 'Formularul nu mai este valabil. Am pregătit unul nou: apasă din nou „Trimite”.',
                 token_expired: 'Formularul a expirat. Am pregătit unul nou: apasă din nou „Trimite”.',
                 too_fast: 'Ai completat foarte repede. Așteaptă câteva secunde și apasă din nou „Trimite”.',
-                bot_check: 'Verificarea anti-roboți nu a reușit. Încearcă din nou.',
+                bot_check: 'Verificarea anti-roboți nu a reușit. Reîncarcă pagina și completează formularul din nou.',
                 rate_limited: 'Prea multe încercări. Încearcă din nou peste {minutes} minute.',
                 blocked: 'Cererile de la această adresă nu sunt acceptate.',
                 server_error: 'A apărut o eroare pe server. Încearcă din nou mai târziu.',
@@ -101,6 +108,12 @@
             ended: 'The registration period has ended.',
             full: 'The maximum number of accounts has been reached.',
             busy: 'There are many pending requests. Please try again later.',
+            duplicate_device: 'An account was already requested from this device. If this is a mistake, contact the administrator.',
+            duplicate_network: 'An account was recently requested from this network. If this is a mistake, contact the administrator.',
+            signed_in: 'This browser is already signed in to the server{name}. You do not need a new account.',
+            network_blocked: 'Registration is not available through VPNs, proxies, Tor or data-center networks. Disconnect the VPN and try again.',
+            country_blocked: 'Registration is not available from your country.',
+            rate_limited: 'Too many attempts. Please try again later.',
             introApproval: 'Fill in the form. Your account becomes active once the administrator approves it; you will get an email.',
             introAutomatic: 'Fill in the form and your account will be created right away.',
             introInvite: 'You need an invitation code from the administrator. Your account becomes active after approval.',
@@ -168,10 +181,11 @@
                 pin_weak: 'The PIN is too simple (e.g. 1111, 1234).',
                 consent_required: 'Your consent is required.',
                 invite_invalid: 'The invitation code is not valid.',
+                phone_taken: 'This phone number has already been used for an account.',
                 token_invalid: 'The form is no longer valid. A new one is ready: press "Send" again.',
                 token_expired: 'The form has expired. A new one is ready: press "Send" again.',
                 too_fast: 'That was very fast. Wait a few seconds and press "Send" again.',
-                bot_check: 'The anti-bot check failed. Please try again.',
+                bot_check: 'The anti-bot check failed. Reload the page and fill in the form again.',
                 rate_limited: 'Too many attempts. Please try again in {minutes} minutes.',
                 blocked: 'Requests from this address are not accepted.',
                 server_error: 'A server error occurred. Please try again later.',
@@ -192,6 +206,78 @@
     var usernameTimer = null;
     var usernameSeq = 0;
     var touched = {};
+    var activity = { inputs: 0, gestures: 0 };
+
+    // Doar evenimentele generate de om (isTrusted); scripturile care umplu campurile nu le produc.
+    document.addEventListener('input', function (e) { if (e.isTrusted) { activity.inputs++; } }, true);
+    ['keydown', 'pointerdown', 'touchstart'].forEach(function (type) {
+        document.addEventListener(type, function (e) { if (e.isTrusted) { activity.gestures++; } }, { capture: true, passive: true });
+    });
+
+    function storedDevice() {
+        try { return localStorage.getItem('registration.device') || ''; } catch (e) { return ''; }
+    }
+
+    function storeDevice(value) {
+        try { if (value) { localStorage.setItem('registration.device', value); } } catch (e) { /* stocare blocata */ }
+    }
+
+    // Conturile Emby cu care acest browser e conectat in interfata web (aceeasi origine). Doar id-urile.
+    function embyUsers() {
+        var ids = [];
+        try {
+            var data = JSON.parse(localStorage.getItem('servercredentials3') || '{}');
+            (data.Servers || []).forEach(function (server) {
+                if (server.UserId) { ids.push(server.UserId); }
+                (server.Users || []).forEach(function (u) { if (u && (u.UserId || u.Id)) { ids.push(u.UserId || u.Id); } });
+            });
+        } catch (e) { /* fara date */ }
+        return ids.filter(function (id, i) { return /^[0-9a-f-]{32,36}$/i.test(id) && ids.indexOf(id) === i; }).slice(0, 20);
+    }
+
+    function automationSigns() {
+        var signs = [];
+        if (navigator.webdriver) { signs.push('webdriver'); }
+        if (/HeadlessChrome|PhantomJS|Electron|puppeteer|playwright/i.test(navigator.userAgent)) { signs.push('headless'); }
+        return signs.join(',');
+    }
+
+    // Amprenta: caracteristici stabile ale browserului, reduse la un hash (nu se trimit separat).
+    function fingerprint() {
+        var parts = [navigator.userAgent, navigator.platform, navigator.hardwareConcurrency, navigator.deviceMemory, navigator.maxTouchPoints,
+            screen.width + 'x' + screen.height + 'x' + screen.colorDepth, window.devicePixelRatio,
+            (navigator.languages || []).join(','), (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone];
+        try {
+            var gl = document.createElement('canvas').getContext('webgl');
+            var ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
+            if (ext) { parts.push(gl.getParameter(ext.UNMASKED_VENDOR_WEBGL), gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)); }
+        } catch (e) { /* fara WebGL */ }
+        try {
+            var canvas = document.createElement('canvas');
+            canvas.width = 220; canvas.height = 30;
+            var ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top'; ctx.font = '16px Arial'; ctx.fillStyle = '#f60'; ctx.fillRect(100, 1, 62, 20);
+            ctx.fillStyle = '#069'; ctx.fillText('Emby înregistrare ✓ 1.2', 2, 15);
+            parts.push(canvas.toDataURL());
+        } catch (e) { /* fara canvas */ }
+        return hash(parts.join('|'));
+    }
+
+    // cyrb53, de doua ori cu seminte diferite: 128 de biti in hex.
+    function hash(text) {
+        function cyrb(seed) {
+            var h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+            for (var i = 0; i < text.length; i++) {
+                var ch = text.charCodeAt(i);
+                h1 = Math.imul(h1 ^ ch, 2654435761);
+                h2 = Math.imul(h2 ^ ch, 1597334677);
+            }
+            h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+            h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+            return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+        }
+        return cyrb(1) + cyrb(2);
+    }
 
     function $(id) { return document.getElementById(id); }
 
@@ -245,8 +331,10 @@
     }
 
     function loadInfo() {
-        return api('Info').then(function (data) {
+        var query = '?Device=' + encodeURIComponent(storedDevice()) + '&Users=' + encodeURIComponent(embyUsers().join(','));
+        return api('Info' + query).then(function (data) {
             info = data;
+            storeDevice(info.Device);
             if (info.Token) { startPow(); }
             return info;
         });
@@ -626,7 +714,13 @@
                 Pin: info.PinEnabled ? $('pin').value.trim() : '',
                 InviteCode: $('inviteCode').value.trim(),
                 Consent: $('consent').checked,
-                Language: lang
+                Language: lang,
+                Device: storedDevice(),
+                Fingerprint: fingerprint(),
+                EmbyUsers: embyUsers(),
+                Automation: automationSigns(),
+                Inputs: activity.inputs,
+                Gestures: activity.gestures
             };
             return api('Submit', body);
         }).then(handleResult, function () {
@@ -657,7 +751,7 @@
             return;
         }
 
-        if (result.Outcome === 'Closed') {
+        if (result.Outcome === 'Closed' || result.Outcome === 'Blocked') {
             showClosed(result.Error);
             return;
         }
@@ -716,7 +810,9 @@
     }
 
     function showClosed(reason) {
-        $('closedText').textContent = (info && info.ClosedMessage) || t(reason || 'closed');
+        var generic = ['closed', 'not_yet', 'ended', 'full', 'busy'].indexOf(reason || 'closed') >= 0;
+        var detail = info && info.ClosedDetail ? ' (' + info.ClosedDetail + ')' : '';
+        $('closedText').textContent = (generic && info && info.ClosedMessage) || t(reason || 'closed', { name: detail });
         show('closed');
     }
 

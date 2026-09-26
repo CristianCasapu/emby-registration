@@ -74,6 +74,26 @@ public sealed class RegistrationRecord
     /// <summary>Contul se dezactiveaza singur atunci (cont de proba); null = niciodata.</summary>
     public DateTimeOffset? AccountExpiresAt { get; set; }
 
+    /// <summary>Reteaua (/24 IPv4, /64 IPv6), pentru regula „o cerere per adresa”.</summary>
+    public string? Subnet { get; set; }
+
+    /// <summary>Hash-ul identificatorului de dispozitiv (nu identificatorul insusi).</summary>
+    public string? DeviceHash { get; set; }
+
+    /// <summary>Amprenta browserului.</summary>
+    public string? Fingerprint { get; set; }
+
+    public long? Asn { get; set; }
+
+    /// <summary>Furnizorul de internet (organizatia ASN).</summary>
+    public string? NetworkName { get; set; }
+
+    /// <summary>residential, warp, local, unknown (centrele de date si Tor sunt refuzate).</summary>
+    public string? NetworkKind { get; set; }
+
+    /// <summary>Semne de cont dublu, semnalate adminului (nu blocate).</summary>
+    public List<string> Flags { get; set; } = new();
+
     /// <summary>Paznicul de politica pastreaza drepturile minime; adminul poate „elibera” contul.</summary>
     public bool Managed { get; set; } = true;
 }

@@ -31,6 +31,7 @@ Legendă: ⬜ neînceput · 🟨 în lucru · ✅ gata · ⛔ blocat · ❓ așt
 | 12 | Documentație (README RO/EN), prima versiune `v1.0.0` | ✅ | v1.0.0 publicat |
 | 14 | Trimite datele de acces (text, copiere, e-mail, WhatsApp, Telegram, SMS, partajare) | ✅ | Cerută 2026-09-25; parolă nouă generată/scrisă sau fără parolă |
 | 15 | Buton „Creează cont nou” pe ecranul de conectare (web) | ✅ | `tools/install-login-button.sh`; aplicațiile native nu pot fi modificate |
+| 16 | Un singur cont per dispozitiv / adresă, anti-roboți întărit, pagină doar pentru vizitatori legitimi | ✅ | v1.3.0; e2e pe Emby real (centre de date, Tor, adresă duplicată, dispozitiv, telefon, scripturi) |
 | 13 | Deploy pe poweredge | ✅ | Instalat 2026-09-25; înregistrarea rămâne închisă până o deschide adminul |
 
 Jurnal de progres (se completează pe parcurs):
@@ -43,6 +44,7 @@ Jurnal de progres (se completează pe parcurs):
 | 2026-09-25 | 100c699 | Publicat pe GitHub (public) |
 | 2026-09-25 | v0.9.0 | Primul release (pre-release), publicat de GitHub Actions, semnătură verificată |
 | 2026-09-25 | v1.0.0 | Release 1.0.0, instalat pe server prin actualizarea din plugin |
+| 2026-09-26 | v1.3.0 | Un cont per dispozitiv/adresă, doar vizitatori legitimi, 107 teste unitare |
 | 2026-09-26 | v1.2.0 | Înregistrare deschisă (aprobare manuală), biblioteci Filme + Seriale (Copii e în Filme), buton de login instalat |
 | 2026-09-25 | — | Deploy pe server; corectat: configurația nu se poate salva în constructorul plugin-ului; test e2e complet trecut |
 
@@ -356,6 +358,31 @@ Tab-ul „Trimite acces” (și butonul de pe fiecare cont aprobat): alegi utili
 - **parolă nouă generată** (`xxxx-xxxx-xxxx`, fără caractere care se confundă) sau **scrisă de admin** — se setează imediat în Emby și apare doar în mesaj.
 
 Mesajul (editabil) conține adresa, portul, utilizatorul, parola, linkul web și instrucțiuni pentru aplicații. Trimitere: copiere, partajare nativă a telefonului (Messenger, Signal etc.), WhatsApp (`wa.me`, cu numărul din cerere), Telegram, SMS, e-mail din aplicația adminului (`mailto:`) sau de pe server prin SMTP. Schimbarea parolei se notează în jurnalul de activitate (fără parolă).
+
+## 12c. Un cont per dispozitiv și per adresă; doar vizitatori legitimi (2026-09-26)
+
+**Semnale de „același dispozitiv”** (blocare):
+- identificator de dispozitiv semnat, emis la prima vizită, păstrat în cookie (`HttpOnly`, `SameSite=Strict`, ~13 luni) și în `localStorage`;
+- conturile Emby cu care browserul e deja conectat în interfața web (aceeași origine: `servercredentials3`, doar id-urile, fără tokenuri);
+- amprenta browserului (ecran, fus orar, limbi, procesor, WebGL, canvas) + aceeași rețea → blocare; amprentă singură → semnalată adminului (telefoane de același model au aceeași amprentă).
+
+**Semnale de „aceeași adresă”** (IP-urile sunt dinamice, deci doar pe o fereastră de timp):
+- aceeași adresă IP ca o cerere din ultimele 30 de zile → blocare;
+- aceeași adresă IP ca un dispozitiv al unui cont existent, activ în ultimele 14 zile (lista de dispozitive Emby) → blocare;
+- aceeași rețea (/24 IPv4, /64 IPv6) → semnalat adminului;
+- Cloudflare WARP (AS13335): adresa e comună multor oameni → doar semnalat;
+- același număr de telefon → blocare; același e-mail → răspuns identic, fără cont (existent).
+
+**Doar vizitatori legitimi:**
+- rețele de centre de date / VPN comerciale / Tor refuzate chiar la încărcarea paginii (ASN din baza GeoLite2 a plugin-ului Jurnal de acces; Tor = `CF-IPCountry: T1`);
+- opțional: doar anumite țări;
+- cererile trebuie să vină din pagină: antet `Origin` al site-ului, `Sec-Fetch-Site: same-origin`;
+- semne de automatizare (`navigator.webdriver`, Chrome headless) → refuz;
+- interacțiune reală: evenimente de tastare/atingere generate de utilizator (`isTrusted`);
+- proof-of-work adaptiv: mai greu când vin multe cereri;
+- Turnstile rămâne stratul cel mai puternic (cere cheile din contul Cloudflare).
+
+Fiecare regulă are acțiunea configurabilă (blocare / semnalare / oprit); semnalările apar lângă cerere în tab-ul Cereri.
 
 ## 13. Idei pentru mai târziu
 
