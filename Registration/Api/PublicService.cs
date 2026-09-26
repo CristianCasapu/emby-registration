@@ -69,6 +69,15 @@ public sealed class UnlockRegistration : IReturn<UnlockResult>
     public string[]? Users { get; set; }
 }
 
+[Route("/Registration/ClientLog", "POST", Summary = "Raport scurt din browser cand pagina nu poate continua (fara valorile introduse)")]
+[Unauthenticated]
+public sealed class ClientLog : IReturnVoid
+{
+    public string? Step { get; set; }
+
+    public string? Detail { get; set; }
+}
+
 [Route("/Registration/ConfirmEmail", "POST", Summary = "Confirma adresa de e-mail dintr-o cerere")]
 [Unauthenticated]
 public sealed class ConfirmRegistrationEmail : IReturn<ConfirmResult>
@@ -325,7 +334,9 @@ public sealed partial class PublicService : IService, IRequiresRequest
         info.UsernameMinLength = settings.UsernameMinLength;
         info.UsernameMaxLength = settings.UsernameMaxLength;
         info.PasswordMinLength = Math.Max(8, settings.PasswordMinLength);
-        info.DefaultCountry = settings.DefaultCountry;
+        // Tara vizitatorului (dupa Cloudflare), daca e in lista; altfel cea din setari.
+        info.DefaultCountry = origin.IpCountry != null && PhoneNumbers.ByIso(origin.IpCountry) != null
+            && (allowed.Count == 0 || allowed.Contains(origin.IpCountry)) ? origin.IpCountry : settings.DefaultCountry;
         info.Countries = PhoneNumbers.Countries.Where(c => allowed.Count == 0 || allowed.Contains(c.Iso)).ToList();
         return _resultFactory.GetResult(Request, info, headers);
     }
@@ -373,6 +384,31 @@ public sealed partial class PublicService : IService, IRequiresRequest
         var visible = result.Ok ? new UnlockResult { Ok = true }
             : new UnlockResult { Error = result.Error == "wrong_code" ? "wrong_code" : "unavailable" };
         return _resultFactory.GetResult(Request, visible, headers);
+    }
+
+    public void Post(ClientLog request)
+    {
+        var manager = Manager;
+        var now = DateTimeOffset.UtcNow;
+        var origin = Origin();
+        var key = "clientlog:" + RateLimiter.IpKey(origin.Ip);
+        if (!manager.Limits.Allows(key, 20, TimeSpan.FromMinutes(10), now))
+        {
+            return;
+        }
+
+        manager.Limits.Record(key, now);
+        static string Clean(string? text, int max) =>
+            new string((text ?? string.Empty).Where(c => !char.IsControl(c)).Take(max).ToArray());
+
+        var step = Clean(request.Step, 30).ToLowerInvariant();
+        if (step.Length == 0 || !step.All(c => char.IsAsciiLetterLower(c) || c == '_'))
+        {
+            return;
+        }
+
+        manager.Store.Count("client_" + step, now);
+        manager.ReportClient(step, Clean(request.Detail, 300), origin);
     }
 
     public object Post(ConfirmRegistrationEmail request) => Json(new ConfirmResult

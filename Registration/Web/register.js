@@ -96,7 +96,7 @@
                 
                 server_error: 'A apărut o eroare. Încearcă mai târziu.',
                 network: 'Serverul nu răspunde. Verifică conexiunea și încearcă din nou.',
-                fields: 'Verifică câmpurile marcate.'
+                fields: 'Verifică:'
             }
         },
         en: {
@@ -190,7 +190,7 @@
                 
                 server_error: 'An error occurred. Please try again later.',
                 network: 'The server is not responding. Check your connection and try again.',
-                fields: 'Please check the highlighted fields.'
+                fields: 'Please check:'
             }
         }
     };
@@ -212,6 +212,29 @@
     document.addEventListener('input', function (e) { if (e.isTrusted) { activity.inputs++; } }, true);
     ['keydown', 'pointerdown', 'touchstart'].forEach(function (type) {
         document.addEventListener(type, function (e) { if (e.isTrusted) { activity.gestures++; } }, { capture: true, passive: true });
+    });
+
+    var reported = {};
+
+    // Raport scurt catre server cand pagina nu poate continua; fara valorile introduse.
+    function report(step, detail) {
+        var key = step + '|' + detail;
+        if (reported[key]) { return; }
+        reported[key] = true;
+        try {
+            fetch('ClientLog', {
+                method: 'POST', credentials: 'same-origin', keepalive: true,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Step: step, Detail: String(detail || '').slice(0, 300) })
+            }).catch(function () { /* fara raport */ });
+        } catch (e) { /* fara raport */ }
+    }
+
+    window.addEventListener('error', function (e) {
+        report('jserror', (e.message || 'error') + ' @' + (e.lineno || 0) + ':' + (e.colno || 0));
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+        report('jsreject', e.reason && (e.reason.message || e.reason) || 'rejection');
     });
 
     function storedDevice() {
@@ -358,7 +381,8 @@
         });
     }
 
-    // Proof-of-work in fundal, cat se completeaza formularul.
+    // Proof-of-work in fundal, cat se completeaza formularul. Daca browserul nu porneste
+    // worker-ul (unele browsere din aplicatii) sau acesta nu raspunde, calculul continua pe pagina.
     function startPow() {
         var token = info.Token, bits = info.PowBits;
         if (!bits) {
@@ -366,25 +390,55 @@
             return;
         }
         var state = { token: token, solution: null };
-        state.promise = new Promise(function (resolve, reject) {
-            var worker;
+        state.promise = new Promise(function (resolve) {
+            var done = false;
+            function finish(solution) {
+                if (done) { return; }
+                done = true;
+                state.solution = solution;
+                resolve(solution);
+            }
+            var worker = null;
+            var fallback = function (reason) {
+                if (done) { return; }
+                if (worker) { try { worker.terminate(); } catch (e) { /* */ } }
+                report('pow_fallback', reason);
+                solveOnPage(token, bits, finish);
+            };
             try {
                 worker = new Worker('Assets/pow.js');
+                worker.onmessage = function (event) {
+                    if (event.data && event.data.solution != null) {
+                        worker.terminate();
+                        finish(event.data.solution);
+                    }
+                };
+                worker.onerror = function (e) { fallback('worker_error ' + (e && e.message || '')); };
+                worker.postMessage({ token: token, bits: bits });
+                setTimeout(function () { fallback('worker_timeout'); }, 20000);
             } catch (e) {
-                reject(e);
-                return;
+                fallback('worker_unavailable ' + (e && e.message || ''));
             }
-            worker.onmessage = function (event) {
-                if (event.data.solution != null) {
-                    state.solution = event.data.solution;
-                    worker.terminate();
-                    resolve(state.solution);
-                }
-            };
-            worker.onerror = function (e) { worker.terminate(); reject(e); };
-            worker.postMessage({ token: token, bits: bits });
         });
         pow = state;
+    }
+
+    // Aceeasi cautare ca in worker, pe bucati, ca pagina sa ramana fluida.
+    function solveOnPage(token, bits, finish) {
+        function run() {
+            var n = 0;
+            (function chunk() {
+                var found = window.powSolveRange(token, bits, n, 8192);
+                n += 8192;
+                if (found !== null) { finish(found); } else { setTimeout(chunk, 0); }
+            })();
+        }
+        if (window.powSolveRange) { run(); return; }
+        var script = document.createElement('script');
+        script.src = 'Assets/pow.js';
+        script.onload = run;
+        script.onerror = function () { report('pow_script', 'load'); finish(''); };
+        document.head.appendChild(script);
     }
 
     // --- Turnstile ------------------------------------------------------------------------
@@ -485,7 +539,8 @@
 
     /** Numarul in format E.164 sau null; accepta +, 00 si 0 in fata numarului national. */
     function phoneE164() {
-        var raw = $('phone').value.trim();
+        var raw = $('phone').value.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF\u200B]/g, '')
+            .replace(/[\u00A0\u2007\u202F]/g, ' ').replace(/[\u2010-\u2015\u2212]/g, '-').trim();
         if (!raw) { return null; }
         if (/[^\d\s\-.()+/]/.test(raw)) { return null; }
         var digits = raw.replace(/\D/g, '');
@@ -686,6 +741,24 @@
 
     // --- Trimitere ----------------------------------------------------------------------------
 
+    // Lista campurilor gresite chiar langa buton (pe telefon, erorile de sus nu se vad), apoi primul camp.
+    function showInvalid(source) {
+        var boxes = Array.prototype.slice.call(document.querySelectorAll('.field.invalid'));
+        var names = boxes.map(function (box) {
+            var label = box.querySelector('label');
+            return label ? label.textContent.replace(/\s*\(.*\)\s*$/, '').trim() : box.dataset.field;
+        });
+        var box = $('formError');
+        box.textContent = t('errors.fields') + (names.length ? ' ' + names.join(', ') + '.' : '');
+        box.classList.remove('hidden');
+        report('invalid_' + source, boxes.map(function (b) { return b.dataset.field + ':' + (b.querySelector('.error') || {}).textContent; }).join('; ').slice(0, 300));
+        if (boxes[0]) {
+            boxes[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            var input = boxes[0].querySelector('input, select');
+            if (input) { setTimeout(function () { input.focus({ preventScroll: true }); }, 350); }
+        }
+    }
+
     function setBusy(busy, note) {
         var button = $('submit');
         button.disabled = busy;
@@ -709,15 +782,16 @@
             if (!validateField(f)) { ok = false; }
         });
         if (!ok) {
-            formError('fields');
-            var first = document.querySelector('.field.invalid input, .field.invalid select');
-            if (first) { first.focus(); }
+            showInvalid('client');
             return;
         }
 
         setBusy(true, t('working'));
         var current = pow;
-        Promise.all([current.promise, waitTurnstile(15000)]).then(function (values) {
+        var slow = new Promise(function (resolve, reject) {
+            setTimeout(function () { reject(new Error('pow_timeout')); }, 45000);
+        });
+        Promise.all([Promise.race([current.promise, slow]), waitTurnstile(15000)]).then(function (values) {
             var body = {
                 Token: current.token,
                 Pow: values[0],
@@ -742,9 +816,10 @@
                 Gestures: activity.gestures
             };
             return api('Submit', body);
-        }).then(handleResult, function () {
+        }).then(handleResult, function (e) {
             setBusy(false);
-            formError('network');
+            report('submit_failed', e && e.message || 'network');
+            formError(e && e.message === 'pow_timeout' ? 'error' : 'network');
         });
     }
 
@@ -764,9 +839,7 @@
                 }
                 setError(field, result.Fields[field]);
             });
-            formError('fields');
-            var first = document.querySelector('.field.invalid input, .field.invalid select');
-            if (first) { first.focus(); }
+            showInvalid('server');
             return;
         }
 
@@ -780,6 +853,7 @@
             return;
         }
 
+        report('submit_' + String(result.Outcome || 'unknown').toLowerCase(), result.Error || '');
         formError(result.Error === 'server_error' ? 'server_error' : 'error');
         loadInfo().catch(function () { /* se reincearca la urmatoarea trimitere */ });
     }
@@ -882,7 +956,8 @@
             } else {
                 showClosed('unavailable');
             }
-        }, function () {
+        }, function (e) {
+            report('unlock_failed', e && e.message || 'network');
             setError('code', 'network');
         }).then(function () {
             button.disabled = false;

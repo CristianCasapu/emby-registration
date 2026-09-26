@@ -67,7 +67,12 @@ public static class PhoneNumbers
             return null;
         }
 
-        var raw = input.Trim();
+        // Completarea automata (mai ales pe iPhone) aduce marcaje invizibile de directie,
+        // spatii neseparabile si cratime Unicode.
+        var raw = new string(input.Where(c => c is not ('\u200E' or '\u200F' or '\u202A' or '\u202B' or '\u202C' or '\u202D' or '\u202E'
+                or '\u2066' or '\u2067' or '\u2068' or '\u2069' or '\uFEFF' or '\u200B'))
+            .Select(c => c is '\u00A0' or '\u2007' or '\u202F' ? ' ' : c is >= '\u2010' and <= '\u2015' or '\u2212' ? '-' : c)
+            .ToArray()).Trim();
         var international = raw.StartsWith('+') || raw.StartsWith("00", StringComparison.Ordinal);
         var digits = new string(raw.Where(char.IsAsciiDigit).ToArray());
         if (raw.Any(c => !char.IsAsciiDigit(c) && c is not (' ' or '-' or '.' or '(' or ')' or '+' or '/')))

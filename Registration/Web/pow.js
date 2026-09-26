@@ -67,23 +67,36 @@ function leadingZeros() {
     return bits;
 }
 
-self.onmessage = function (event) {
-    var token = event.data.token, bits = event.data.bits;
+// Cauta pe un interval; intoarce solutia sau null. Folosit de worker si, ca rezerva, de pagina.
+function powSolveRange(token, bits, start, count) {
     var prefix = new TextEncoder().encode(token + ':');
     var bytes = new Uint8Array(prefix.length + 32 + 72);
     bytes.set(prefix);
-    var started = Date.now();
-    for (var n = 0; ; n++) {
+    for (var n = start; n < start + count; n++) {
         var digits = String(n);
         var length = prefix.length;
         for (var k = 0; k < digits.length; k++) { bytes[length++] = digits.charCodeAt(k); }
         sha256(bytes, length);
         if (leadingZeros() >= bits) {
-            self.postMessage({ solution: digits, tries: n + 1, ms: Date.now() - started });
-            return;
-        }
-        if ((n & 0xffff) === 0 && n > 0) {
-            self.postMessage({ progress: n });
+            return digits;
         }
     }
-};
+    return null;
+}
+
+if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope) {
+    self.onmessage = function (event) {
+        var token = event.data.token, bits = event.data.bits;
+        var started = Date.now();
+        for (var start = 0; ; start += 65536) {
+            var found = powSolveRange(token, bits, start, 65536);
+            if (found !== null) {
+                self.postMessage({ solution: found, ms: Date.now() - started });
+                return;
+            }
+            self.postMessage({ progress: start + 65536 });
+        }
+    };
+} else {
+    window.powSolveRange = powSolveRange;
+}

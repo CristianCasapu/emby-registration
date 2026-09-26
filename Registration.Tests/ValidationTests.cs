@@ -111,6 +111,8 @@ public class PhoneTests
     [InlineData("0040712345678", "RO", "+40712345678")]
     [InlineData("(0151) 2345 6789", "DE", "+4915123456789")]
     [InlineData("0712abc", "RO", null)]
+    [InlineData("\u202A+44 7700\u00A0900123\u202C", "RO", "+447700900123")]
+    [InlineData("07700\u2011900\u2011123", "GB", "+447700900123")]
     public void Normalize(string input, string country, string? expected)
     {
         Assert.Equal(expected, PhoneNumbers.Normalize(input, country));

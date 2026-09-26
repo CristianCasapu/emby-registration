@@ -239,6 +239,11 @@ public sealed partial class RegistrationManager
         }
     }
 
+    /// <summary>Raportul unui browser care nu poate continua (eroare JavaScript, campuri refuzate, proof-of-work blocat).</summary>
+    public void ReportClient(string step, string detail, Origin origin) =>
+        _logger.Warn("Inregistrare (browser): {0} {1} | {2}{3} | {4}", step, detail, origin.Ip,
+            origin.IpCountry == null ? string.Empty : " / " + origin.IpCountry, origin.UserAgent ?? "-");
+
     /// <summary>Codul afisat vizitatorului pentru un semn de blocare.</summary>
     public static string BlockReason(DuplicateSignal signal) => signal.Code switch
     {
