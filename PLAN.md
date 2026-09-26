@@ -34,6 +34,7 @@ Legendă: ⬜ neînceput · 🟨 în lucru · ✅ gata · ⛔ blocat · ❓ așt
 | 16 | Un singur cont per dispozitiv / adresă, anti-roboți întărit, pagină doar pentru vizitatori legitimi | ✅ | v1.3.0; e2e pe Emby real (centre de date, Tor, adresă duplicată, dispozitiv, telefon, scripturi) |
 | 17 | Cod de acces rotativ (5 caractere, fără caractere asemănătoare), blocare IP + dispozitiv 24 h după 2 greșeli, deblocare din plugin; verificare chei Turnstile | ✅ | v1.4.0; codul e oprit până îl pornește adminul |
 | 18 | Administratorii pot testa formularul (ocolesc codul și regulile) | ✅ | v1.5.0; sesiunea Emby din browser, verificată pe server |
+| 19 | Cod de familie static, schimbabil din plugin | ✅ | v1.6.0; setat „FAMIS” |
 | 13 | Deploy pe poweredge | ✅ | Instalat 2026-09-25; înregistrarea rămâne închisă până o deschide adminul |
 
 Jurnal de progres (se completează pe parcurs):
@@ -46,6 +47,7 @@ Jurnal de progres (se completează pe parcurs):
 | 2026-09-25 | 100c699 | Publicat pe GitHub (public) |
 | 2026-09-25 | v0.9.0 | Primul release (pre-release), publicat de GitHub Actions, semnătură verificată |
 | 2026-09-25 | v1.0.0 | Release 1.0.0, instalat pe server prin actualizarea din plugin |
+| 2026-09-26 | v1.6.0 | Cod de familie static (nu se consumă, fără reguli de adresă comună) |
 | 2026-09-26 | v1.5.0 | Mod administrator pentru teste |
 | 2026-09-26 | v1.4.3 | Buton de login pentru toți, pagina de cod prima, mesaje publice scurte și generice (motivul doar în panou) |
 | 2026-09-26 | v1.4.0 | Cod de acces, blocări separate IP/dispozitiv, buton „Verifică cheile” Turnstile |

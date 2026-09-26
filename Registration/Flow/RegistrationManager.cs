@@ -148,7 +148,10 @@ public sealed partial class RegistrationManager
 
     public PolicyGuard? Guard { get; set; }
 
-    public static PluginConfiguration Settings => Plugin.Instance?.Configuration ?? new PluginConfiguration();
+    public static PluginConfiguration Settings => Plugin.Instance?.Configuration ?? TestSettings ?? new PluginConfiguration();
+
+    /// <summary>Setarile folosite in teste (fara plugin incarcat).</summary>
+    internal static PluginConfiguration? TestSettings { get; set; }
 
     public string ServerName(string fallback) =>
         string.IsNullOrWhiteSpace(Settings.ServerDisplayName) ? fallback : Settings.ServerDisplayName.Trim();
@@ -295,7 +298,8 @@ public sealed partial class RegistrationManager
             return SubmitResult.Fail("Blocked", "blocked");
         }
 
-        if (!admin && settings.RequireAccessCode && !HasPass(origin.PassCookie, visitorDevice, visitorIp, now))
+        var passKind = PassKind(origin.PassCookie, visitorDevice, visitorIp, now);
+        if (!admin && settings.RequireAccessCode && passKind == null)
         {
             Store.Count("bot_locked", now);
             return SubmitResult.Fail("Closed", "locked");
@@ -354,7 +358,10 @@ public sealed partial class RegistrationManager
             Fingerprint = CleanFingerprint(form.Fingerprint),
             EmbyUsers = form.EmbyUsers ?? Array.Empty<string>(),
         };
-        var signals = admin ? new List<DuplicateSignal>() : FindDuplicates(evidence, origin, network, input.Phone, now);
+        var family = settings.RequireAccessCode && passKind == "family";
+        var signals = admin ? new List<DuplicateSignal>() : FindDuplicates(evidence, origin, network, input.Phone, now)
+            .Where(x => !(family && IsNetworkSignal(x.Code)))
+            .ToList();
         var block = signals.FirstOrDefault(x => x.Action == DuplicateActions.Block);
         if (block != null)
         {
@@ -392,6 +399,11 @@ public sealed partial class RegistrationManager
         await _submitLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            if (family)
+            {
+                signals.Insert(0, new DuplicateSignal("family", DuplicateActions.Flag, "cod de familie"));
+            }
+
             return await CreateAsync(input, form, origin, settings, now, evidence, network, signals).ConfigureAwait(false);
         }
         finally

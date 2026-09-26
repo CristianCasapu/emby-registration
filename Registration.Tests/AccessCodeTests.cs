@@ -114,6 +114,52 @@ public sealed class AccessCodeTests : IDisposable
         Assert.Empty(_manager.Store.Read(d => d.Blocks.ToList()));
     }
 
+    [Theory]
+    [InlineData("famis", "FAMIS")]
+    [InlineData(" fa-mis ", "FAMIS")]
+    [InlineData("abc", "")]
+    [InlineData("ABCDEFGHIJKLM", "")]
+    [InlineData(null, "")]
+    public void FamilyCodeNormalization(string? input, string expected)
+    {
+        Assert.Equal(expected, RegistrationManager.NormalizeFamilyCode(input));
+    }
+
+    [Fact]
+    public void FamilyCodeIsReusableDoesNotRotateAndIgnoresSharedAddress()
+    {
+        RegistrationManager.TestSettings = new PluginConfiguration { RequireAccessCode = true, FamilyCode = "FAMIS" };
+        try
+        {
+            // O cerere anterioara din aceeasi casa (aceeasi adresa IP).
+            _manager.Store.Write(d => d.Requests.Add(new RegistrationRecord { Id = "r1", Username = "ana", Status = RequestStatus.Approved, CreatedAt = Now, Ip = "203.0.113.40", Subnet = RateLimiter.SubnetKey(IPAddress.Parse("203.0.113.40")) }));
+            var rotating = _manager.CurrentCode(Now).Code;
+            Assert.NotEqual("FAMIS", rotating);
+
+            var device1 = _manager.Devices.Issue();
+            var first = _manager.TryUnlock("famis", From("203.0.113.40"), device1, Now);
+            Assert.True(first.Ok);
+            Assert.Equal("family", _manager.PassKind(first.Pass, device1, "203.0.113.40", Now.AddMinutes(1)));
+
+            var device2 = _manager.Devices.Issue();
+            Assert.True(_manager.TryUnlock("FAMIS", From("203.0.113.40"), device2, Now.AddMinutes(2)).Ok);
+            Assert.Equal(rotating, _manager.CurrentCode(Now).Code);
+
+            // Codul rotativ de la aceeasi adresa: refuzat (adresa comuna nu e iertata).
+            Assert.Equal("duplicate_network", _manager.TryUnlock(rotating, From("203.0.113.40"), _manager.Devices.Issue(), Now.AddMinutes(3)).Error);
+            Assert.Equal(rotating, _manager.CurrentCode(Now).Code);
+
+            // Acelasi dispozitiv ca o cerere existenta: refuzat si cu codul de familie.
+            var hash = _manager.DeviceHashOf(device1);
+            _manager.Store.Write(d => d.Requests.Add(new RegistrationRecord { Id = "r2", Username = "ion", Status = RequestStatus.Pending, CreatedAt = Now, DeviceHash = hash }));
+            Assert.Equal("duplicate_device", _manager.TryUnlock("FAMIS", From("198.51.100.40"), device1, Now.AddMinutes(4)).Error);
+        }
+        finally
+        {
+            RegistrationManager.TestSettings = null;
+        }
+    }
+
     [Fact]
     public void NormalizesInput()
     {

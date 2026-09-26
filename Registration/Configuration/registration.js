@@ -29,6 +29,8 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
             fields: [
                 { key: 'RequireAccessCode', type: 'bool', def: false, label: 'Cere cod de acces',
                     help: 'Pagina de înregistrare arată întâi un câmp pentru cod (5 caractere: litere mari și cifre, fără cele care se confundă, ca 0/O sau 1/I/L). Formularul apare doar după codul corect.' },
+                { key: 'FamilyCode', type: 'text', def: '', label: 'Cod de familie (static)', placeholder: 'ex. FAMIS',
+                    help: 'Cod fix pentru familie, 4–12 litere sau cifre; nu se schimbă la folosire și merge de mai multe ori. Cu el nu se aplică regulile de adresă/rețea comună (familia e în aceeași casă); același dispozitiv și același telefon rămân interzise. Cererile trec tot prin aprobare și sunt marcate „cod de familie”. Gol = dezactivat.' },
                 { key: 'MaxCodeAttempts', type: 'int', def: 2, min: 1, max: 10, unit: 'greșeli', label: 'Blochează după', help: 'Numărate separat pentru adresa IP și pentru dispozitiv.' },
                 { key: 'CodeBlockHours', type: 'int', def: 24, min: 1, max: 720, unit: 'ore', label: 'Durata blocării' },
                 { key: 'CodeUnlockMinutes', type: 'int', def: 120, min: 5, max: 1440, unit: 'minute', label: 'Formularul rămâne deschis', help: 'După codul corect, pe același dispozitiv (dacă reîncarcă pagina nu trebuie alt cod).' }
@@ -221,7 +223,7 @@ define(['baseView', 'loading', 'toast', 'emby-scroller'], function (BaseView, lo
         requests: 'Cereri primite', approved: 'Aprobate', rejected: 'Respinse', invalid: 'Câmpuri greșite', duplicate_email: 'E-mail repetat',
         rate_limited: 'Limită de încercări', blocked_ip: 'IP blocat', bot_honeypot: 'Robot: capcană', bot_token: 'Robot: fără token',
         bot_token_reuse: 'Robot: token refolosit', bot_too_fast: 'Prea rapid', bot_pow: 'Robot: proof-of-work', bot_turnstile: 'Robot: Turnstile',
-        bot_origin: 'Robot: nu din pagină', bot_locked: 'Fără cod de acces', code_used: 'Coduri folosite', code_wrong: 'Coduri greșite',
+        bot_origin: 'Robot: nu din pagină', bot_locked: 'Fără cod de acces', code_used: 'Coduri folosite', family_code_used: 'Cod de familie folosit', code_wrong: 'Coduri greșite',
         code_block_ip: 'Adrese blocate (cod)', code_block_device: 'Dispozitive blocate (cod)', bot_automation: 'Browser automatizat', bot_interaction: 'Fără interacțiune reală',
         network_blocked: 'VPN / centru de date / Tor', country_blocked: 'Țară nepermisă',
         dup_same_device: 'Același dispozitiv', dup_signed_in: 'Deja conectat cu un cont', dup_same_ip: 'Aceeași adresă IP',

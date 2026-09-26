@@ -17,7 +17,7 @@
             locked: 'Reîncarcă pagina.',
             lockedTitle: 'Cod de acces',
             lockedText: 'Introdu codul primit.',
-            codeLabel: 'Codul (5 caractere)',
+            codeLabel: 'Codul',
             unlock: 'Continuă',
             introApproval: 'Completează formularul. Contul devine activ după ce administratorul aprobă cererea; vei primi un e-mail.',
             introAutomatic: 'Completează formularul și contul tău va fi creat imediat.',
@@ -87,7 +87,7 @@
                 pin_weak: 'PIN-ul este prea simplu (ex. 1111, 1234).',
                 consent_required: 'Este necesar acordul tău.',
                 invite_invalid: 'Codul de invitație nu este valabil.',
-                code_length: 'Codul are exact 5 caractere.',
+                code_length: 'Cod incomplet.',
                 wrong_code: 'Cod greșit.',
                 error: 'A apărut o eroare. Încearcă din nou.',
                 
@@ -111,7 +111,7 @@
             locked: 'Reload the page.',
             lockedTitle: 'Access code',
             lockedText: 'Enter the code you received.',
-            codeLabel: 'Code (5 characters)',
+            codeLabel: 'Code',
             unlock: 'Continue',
             introApproval: 'Fill in the form. Your account becomes active once the administrator approves it; you will get an email.',
             introAutomatic: 'Fill in the form and your account will be created right away.',
@@ -181,7 +181,7 @@
                 pin_weak: 'The PIN is too simple (e.g. 1111, 1234).',
                 consent_required: 'Your consent is required.',
                 invite_invalid: 'The invitation code is not valid.',
-                code_length: 'The code has exactly 5 characters.',
+                code_length: 'Incomplete code.',
                 wrong_code: 'Wrong code.',
                 error: 'An error occurred. Please try again.',
                 
@@ -864,7 +864,7 @@
     function onUnlock(event) {
         event.preventDefault();
         var code = $('code').value.toUpperCase().replace(/[\s-]/g, '');
-        if (code.length !== (info.CodeLength || 5)) {
+        if (code.length < 4 || code.length > 12) {
             setError('code', 'code_length');
             return;
         }
@@ -993,7 +993,7 @@
         $('locked').addEventListener('submit', onUnlock);
         $('code').addEventListener('input', function () {
             var el = $('code');
-            var clean = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+            var clean = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
             if (clean !== el.value) { el.value = clean; }
             setError('code', null);
         });

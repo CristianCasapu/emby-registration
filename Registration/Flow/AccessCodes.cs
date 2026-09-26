@@ -65,6 +65,7 @@ public sealed partial class RegistrationManager
     private static string NewCode(StoreData data, DateTimeOffset now)
     {
         var used = data.CodeHistory.Select(c => c.Code).ToHashSet(StringComparer.Ordinal);
+        used.Add(NormalizeFamilyCode(Settings.FamilyCode));
         string code;
         do
         {
@@ -77,6 +78,16 @@ public sealed partial class RegistrationManager
         data.CodeHistory.Add(new CodeUse { Code = code, CreatedAt = now });
         return code;
     }
+
+    /// <summary>Codul de familie: litere mari si cifre, 4–12 caractere; altfel gol (dezactivat).</summary>
+    public static string NormalizeFamilyCode(string? code)
+    {
+        var clean = new string((code ?? string.Empty).ToUpperInvariant().Where(char.IsAsciiLetterOrDigit).ToArray());
+        return clean.Length is >= 4 and <= 12 ? clean : string.Empty;
+    }
+
+    /// <summary>Semnele „aceeasi adresa/retea”: nu se aplica pentru codul de familie.</summary>
+    internal static bool IsNetworkSignal(string code) => code is "same_ip" or "same_subnet" or "existing_ip" or "fingerprint_subnet";
 
     internal static string NormalizeCode(string? code) =>
         new string((code ?? string.Empty).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c) && c != '-').ToArray());
@@ -112,14 +123,17 @@ public sealed partial class RegistrationManager
 
         var entered = NormalizeCode(code);
         var current = CurrentCode(now).Code;
-        var correct = entered.Length == CodeLength
-            && CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(entered), Encoding.ASCII.GetBytes(current));
+        var family = NormalizeFamilyCode(settings.FamilyCode);
+        var isFamily = family.Length > 0 && entered.Length == family.Length
+            && CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(entered), Encoding.ASCII.GetBytes(family));
+        var correct = isFamily || (entered.Length == CodeLength
+            && CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(entered), Encoding.ASCII.GetBytes(current)));
 
         if (correct)
         {
             // Codul corect nu se consuma pentru cineva care oricum nu poate cere cont (are deja unul).
             var duplicate = FindDuplicates(new DeviceEvidence { Device = device, EmbyUsers = embyUsers }, origin, network ?? Network(origin), null, now)
-                .FirstOrDefault(x => x.Action == DuplicateActions.Block);
+                .FirstOrDefault(x => x.Action == DuplicateActions.Block && !(isFamily && IsNetworkSignal(x.Code)));
             if (duplicate != null)
             {
                 Store.Count("dup_" + duplicate.Code, now);
@@ -128,6 +142,17 @@ public sealed partial class RegistrationManager
                     Error = BlockReason(duplicate),
                     Detail = duplicate.Code == "signed_in" ? duplicate.Detail[(duplicate.Detail.LastIndexOf(' ') + 1)..] : null,
                 };
+            }
+
+            var until = now.AddMinutes(Math.Max(5, settings.CodeUnlockMinutes));
+            if (isFamily)
+            {
+                // Codul de familie nu se consuma si nu se schimba.
+                Store.Count("family_code_used", now);
+                Notifier.Notify(NotifyEvents.NewRequest, "Înregistrare: cod de familie folosit",
+                    $"Codul de familie a deschis formularul pentru {ip}{(origin.IpCountry == null ? string.Empty : " / " + origin.IpCountry)}.");
+                _logger.Info("Inregistrare: codul de familie a fost folosit de {0}", ip);
+                return new UnlockResult { Ok = true, Pass = IssuePass("family|" + (deviceHash ?? "ip:" + ip), until) };
             }
 
             Store.Write(d =>
@@ -148,7 +173,7 @@ public sealed partial class RegistrationManager
             Notifier.Notify(NotifyEvents.NewRequest, "Înregistrare: cod de acces folosit",
                 $"Codul {current} a deschis formularul pentru {ip}{(origin.IpCountry == null ? string.Empty : " / " + origin.IpCountry)}. Codul nou se vede în pagina plugin-ului.");
             _logger.Info("Inregistrare: codul de acces a fost folosit de {0}; s-a generat altul", ip);
-            return new UnlockResult { Ok = true, Pass = IssuePass(deviceHash ?? "ip:" + ip, now.AddMinutes(Math.Max(5, settings.CodeUnlockMinutes))) };
+            return new UnlockResult { Ok = true, Pass = IssuePass(deviceHash ?? "ip:" + ip, until) };
         }
 
         var max = Math.Max(1, settings.MaxCodeAttempts);
@@ -213,17 +238,20 @@ public sealed partial class RegistrationManager
     });
 
     /// <summary>Formularul e deblocat pentru acest vizitator (cod corect introdus recent)?</summary>
-    public bool HasPass(string? pass, string? device, string? ip, DateTimeOffset now)
+    public bool HasPass(string? pass, string? device, string? ip, DateTimeOffset now) => PassKind(pass, device, ip, now) != null;
+
+    /// <summary>null (fara cod valabil), „code” (cod rotativ) sau „family” (cod de familie).</summary>
+    public string? PassKind(string? pass, string? device, string? ip, DateTimeOffset now)
     {
         if (string.IsNullOrEmpty(pass) || pass.Length > 300)
         {
-            return false;
+            return null;
         }
 
         var dot = pass.IndexOf('.');
         if (dot <= 0)
         {
-            return false;
+            return null;
         }
 
         try
@@ -232,17 +260,24 @@ public sealed partial class RegistrationManager
             var signature = FormToken.FromBase64Url(pass[(dot + 1)..]);
             if (!CryptographicOperations.FixedTimeEquals(signature, PassSignature(payload)) || payload.Length < 9)
             {
-                return false;
+                return null;
             }
 
             var until = DateTimeOffset.FromUnixTimeSeconds(BinaryPrimitives.ReadInt64BigEndian(payload));
             var subject = Encoding.UTF8.GetString(payload, 8, payload.Length - 8);
+            var kind = "code";
+            if (subject.StartsWith("family|", StringComparison.Ordinal))
+            {
+                kind = "family";
+                subject = subject["family|".Length..];
+            }
+
             var deviceHash = DeviceHashOf(device);
-            return until > now && (subject == deviceHash || subject == "ip:" + ip);
+            return until > now && (subject == deviceHash || subject == "ip:" + ip) ? kind : null;
         }
         catch (FormatException)
         {
-            return false;
+            return null;
         }
     }
 

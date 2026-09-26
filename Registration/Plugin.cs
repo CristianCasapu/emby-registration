@@ -54,10 +54,15 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
     public override void UpdateConfiguration(BasePluginConfiguration configuration)
     {
-        // Pagina de configurare nu cunoaste cheia HMAC; o pastram pe cea existenta.
-        if (configuration is PluginConfiguration incoming && string.IsNullOrEmpty(incoming.FormSecret))
+        if (configuration is PluginConfiguration incoming)
         {
-            incoming.FormSecret = Configuration.FormSecret;
+            // Pagina de configurare nu cunoaste cheia HMAC; o pastram pe cea existenta.
+            if (string.IsNullOrEmpty(incoming.FormSecret))
+            {
+                incoming.FormSecret = Configuration.FormSecret;
+            }
+
+            incoming.FamilyCode = Flow.RegistrationManager.NormalizeFamilyCode(incoming.FamilyCode);
         }
 
         base.UpdateConfiguration(configuration);

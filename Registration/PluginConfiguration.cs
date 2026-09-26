@@ -124,6 +124,13 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Formularul se deschide doar dupa un cod de acces dat de admin (5 caractere, se schimba dupa fiecare folosire).</summary>
     public bool RequireAccessCode { get; set; }
 
+    /// <summary>
+    /// Cod static pentru familie (4–12 litere/cifre), schimbat doar de admin; nu se consuma.
+    /// Cu el nu se aplica regulile pe adresa/retea comuna (familia sta in aceeasi casa).
+    /// Gol = dezactivat.
+    /// </summary>
+    public string FamilyCode { get; set; } = string.Empty;
+
     /// <summary>Coduri gresite permise inainte de blocare (pe adresa si pe dispozitiv, separat).</summary>
     public int MaxCodeAttempts { get; set; } = 2;
 

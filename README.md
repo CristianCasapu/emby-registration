@@ -57,6 +57,7 @@ Opțional, formularul se deschide doar cu un cod dat de administrator (Înregist
 - un singur cod valabil; după folosire se generează automat altul, iar un cod emis nu mai apare niciodată;
 - după 2 coduri greșite se blochează 24 de ore, separat, adresa IP și dispozitivul; deblocare din același tab;
 - codul se copiază sau se trimite pe WhatsApp direct din panou.
+- **cod de familie** (opțional): cod fix, 4–12 litere sau cifre, schimbat doar din panou; nu se consumă. Cu el nu se aplică regulile de adresă/rețea comună (familia stă în aceeași casă); același dispozitiv și același telefon rămân interzise, iar cererile trec tot prin aprobare, marcate „cod de familie”.
 
 ## Test ca administrator
 
