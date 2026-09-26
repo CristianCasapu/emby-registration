@@ -45,6 +45,7 @@ Jurnal de progres (se completează pe parcurs):
 | 2026-09-25 | 100c699 | Publicat pe GitHub (public) |
 | 2026-09-25 | v0.9.0 | Primul release (pre-release), publicat de GitHub Actions, semnătură verificată |
 | 2026-09-25 | v1.0.0 | Release 1.0.0, instalat pe server prin actualizarea din plugin |
+| 2026-09-26 | v1.4.3 | Buton de login pentru toți, pagina de cod prima, mesaje publice scurte și generice (motivul doar în panou) |
 | 2026-09-26 | v1.4.0 | Cod de acces, blocări separate IP/dispozitiv, buton „Verifică cheile” Turnstile |
 | 2026-09-26 | v1.3.0 | Un cont per dispozitiv/adresă, doar vizitatori legitimi, 107 teste unitare |
 | 2026-09-26 | v1.2.0 | Înregistrare deschisă (aprobare manuală), biblioteci Filme + Seriale (Copii e în Filme), buton de login instalat |
